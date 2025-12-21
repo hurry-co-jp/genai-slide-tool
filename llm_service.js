@@ -102,38 +102,62 @@ ${additionalInstruction}
 ## ルールと形式
 1. **Frontmatter**:
    冒頭は必ず以下から開始すること。
+   * **静的なヘッダー・フッター**（会社名など全ページ共通のもの）がある場合は、\`header\` / \`footer\` ディレクティブを使用すること。
+   * **動的なタイトル（ページタイトル）**は、\`header\` ディレクティブではなく、各スライドの先頭に \`# タイトル\` (H1) として記述すること。H1はCSSで所定の位置（ヘッダー領域）に固定されるようにスタイル定義すること。
+
    \`\`\`markdown
    ---
    marp: true
    theme: default
    size: 16:9
    pagination: true
+   header: "株式会社サンプル（固定ヘッダーがある場合）"
+   footer: "Confidential（固定フッターがある場合）"
    style: |
-     (ここに提供されたCSSテーマをそのまま埋め込む)
-     /* 追加: 個別のレイアウト調整が必要ならここに追記 */
+     (ここに定義書に基づいたCSSテーマを生成して埋め込む)
+     
+     /* タイトル(H1)をヘッダー領域に固定するスタイル例 */
+     section h1 {
+       position: absolute;
+       top: 30px;
+       left: 40px;
+       width: 90%;
+       font-size: 28pt; /* 定義書のサイズに従う */
+       color: #0052CC;
+     }
+     /* 本文の位置調整（ヘッダーと被らないように） */
+     section {
+       padding-top: 100px;
+     }
    ---
    \`\`\`
 
 2. **スライドのレンダリング**:
    * 設計書にある \`layoutId\` (例: S01, P01) や \`structure\` (例: grid-cols, title-cover) を見て、適切なHTMLタグ (\`<div class="...">\`) を組み立ててください。
    * 単純なテキストスライド以外は、HTMLとCSSクラス（.grid-2, .box, .flex-rowなど）を駆使してレイアウトを再現してください。
-   * CSSテーマには既にユーティリティクラス（.grid-2, .text-primaryなど）が定義されているので、それらを活用してください。
 
 3. **出力**:
    * **Markdownコードのみ**を出力してください。コードブロック(\`\`\`)で囲まないでください。
    * 説明や雑談は一切不要です。
 `;
 
-        const userPrompt = `
+        let userPrompt = `
 # スライド設計書
 ${designDoc}
 
+# デザイン定義書 (Global Design)
+${definitions.globalDesign}
+
 # レイアウト定義書 (YAML)
 ${definitions.layoutPatterns}
+`;
 
-# ベースCSSテーマ (これをstyleブロックに含める)
+        if (cssTheme) {
+            userPrompt += `
+# ベースCSSテーマ
 ${cssTheme}
 `;
+        }
 
         const payload = {
             contents: [{

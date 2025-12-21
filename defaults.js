@@ -58,7 +58,11 @@ layout:
       - name: page_title
         position: top_left # 左上
         style: body_slide.page_title
-        content: dynamic # スライドごとに可変
+        content: dynamic # スライドごとに可変（スライドタイトル）
+      - name: presentation_title
+        position: top_right
+        style: small_text
+        content: static "My Presentation" # 全ページ固定のタイトル（ここを変更してください）
 
   footer:
     elements:
