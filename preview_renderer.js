@@ -256,6 +256,65 @@ export const renderPreview = {
                             <div class="text-3xl font-black text-blue-600 leading-none">90<span class="text-xs align-top">%</span></div>
                             <div class="text-[5px] text-slate-400 tracking-widest mt-1 uppercase">Annual Growth</div>
                         </div>`;
+                } else if (id === 'T01' || type === 'split-code-left-context') {
+                    // T01: Code & Context
+                    contentHTML = `
+                         <div class="h-full flex">
+                            <div class="w-1/3 bg-slate-50 p-2 flex flex-col justify-center border-r border-slate-200">
+                                <div class="w-full h-1.5 bg-slate-700 rounded-sm mb-1.5"></div>
+                                <div class="w-full h-1 bg-slate-300 rounded-sm mb-0.5"></div>
+                                <div class="w-5/6 h-1 bg-slate-300 rounded-sm mb-0.5"></div>
+                            </div>
+                            <div class="w-2/3 bg-slate-900 p-2 font-mono text-[5px] text-slate-400 overflow-hidden flex flex-col justify-center">
+                                <div class="text-green-400">function hello() {</div>
+                                <div class="pl-2">console.log("world");</div>
+                                <div class="">}</div>
+                            </div>
+                         </div>`;
+                } else if (id === 'T02' || type === 'window-console') {
+                    // T02: Terminal
+                    contentHTML = `
+                         <div class="h-full p-2 flex items-center justify-center">
+                            <div class="w-full h-full bg-slate-900 rounded-md border border-slate-700 shadow-sm flex flex-col overflow-hidden">
+                                <div class="h-3 bg-slate-800 border-b border-slate-700 flex items-center px-2 gap-1">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                                    <div class="w-1.5 h-1.5 rounded-full bg-yellow-500"></div>
+                                    <div class="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                                </div>
+                                <div class="p-2 font-mono text-[4px] text-green-500 leading-tight">
+                                    <div>$ build start</div>
+                                    <div class="text-slate-400">Compiling... 100%</div>
+                                    <div class="text-blue-400">[INFO] Success</div>
+                                    <div class="animate-pulse">_</div>
+                                </div>
+                            </div>
+                         </div>`;
+                } else if (id === 'T03' || type === 'diagram-mermaid') {
+                    // T03: Architecture Diagram (Mermaid mock)
+                    contentHTML = `
+                         <div class="h-full p-2 flex items-center justify-center bg-white">
+                            <div class="border border-slate-300 rounded p-1 flex items-center justify-center gap-2">
+                                <div class="w-6 h-6 border border-slate-400 rounded flex items-center justify-center bg-blue-50 text-[3px]">Client</div>
+                                <div class="w-4 h-[1px] bg-slate-400 relative"><div class="absolute right-0 top-1/2 -mt-0.5 w-0 h-0 border-l-[3px] border-l-slate-400 border-y-[2px] border-y-transparent"></div></div>
+                                <div class="w-6 h-6 border border-slate-400 rounded flex items-center justify-center bg-yellow-50 text-[3px]">API</div>
+                                <div class="w-4 h-[1px] bg-slate-400 relative"><div class="absolute right-0 top-1/2 -mt-0.5 w-0 h-0 border-l-[3px] border-l-slate-400 border-y-[2px] border-y-transparent"></div></div>
+                                <div class="w-4 h-6 border border-slate-400 rounded-t-full rounded-b-md flex items-center justify-center bg-green-50 text-[3px]">DB</div>
+                            </div>
+                         </div>`;
+                } else if (id === 'T04' || type === 'stack-vertical-code') {
+                    // T04: Troubleshooting (Log + Code)
+                    contentHTML = `
+                         <div class="h-full flex flex-col">
+                            <div class="h-1/3 bg-slate-900 p-2 text-[4px] font-mono text-red-400 border-b border-white/20 flex flex-col justify-center">
+                                <div>[ERROR] Connection Refused: 500</div>
+                                <div class="text-slate-500">at /app/lib/db.js:42</div>
+                            </div>
+                            <div class="h-2/3 bg-slate-50 p-2 font-mono text-[4px] text-slate-600 border-t border-slate-200 relative">
+                                <div class="absolute top-1 right-1 bg-green-100 text-green-700 px-1 rounded text-[3px] font-bold">FIX</div>
+                                <div class="text-slate-400">// Fixed timeout</div>
+                                <div>const timeout = 5000;</div>
+                            </div>
+                         </div>`;
                 } else {
                     // Generic fallback
                     contentHTML = `
@@ -268,12 +327,12 @@ export const renderPreview = {
                 }
 
                 html += `
-                    <div class="layout-card bg-white border border-slate-200 rounded-lg overflow-hidden flex flex-col">
-                        <div class="aspect-[16/9] bg-slate-50 border-b border-slate-100 relative">
+                    <div class="layout-card bg-white border border-slate-200 rounded-lg overflow-hidden flex flex-col cursor-pointer hover:shadow-md transition-all active:scale-95" data-layout-id="${id}">
+                        <div class="aspect-[16/9] bg-slate-50 border-b border-slate-100 relative pointer-events-none">
                              ${contentHTML}
                              <div class="absolute top-2 left-2 bg-black/70 text-white text-[10px] px-1.5 rounded">${id}</div>
                         </div>
-                        <div class="p-3">
+                        <div class="p-3 pointer-events-none">
                             <div class="font-bold text-sm text-slate-700 mb-1">${layout.name}</div>
                             <div class="text-xs text-slate-500 line-clamp-2" title="${layout.description}">${layout.description}</div>
                         </div>

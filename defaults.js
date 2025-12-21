@@ -123,8 +123,8 @@ export const DEFAULT_LAYOUT_PATTERNS = `# ======================================
   name: 2カラム詳細 (Split Text)
   structure: grid-cols
   cols: 2
-  description: 左右2分割で情報を並列に記載するレイアウト。
-  usage_hints: [2つの要素を並べる場合]
+  description: 左右分割レイアウト。左側に「主張・概念」、右側にその「根拠・データ・図表」を配置することを推奨。
+  usage_hints: [概念と実例、課題と解決策、テキストとグラフ]
 
 - id: L03
   name: 3カラム詳細 (3 Columns)
@@ -142,10 +142,10 @@ export const DEFAULT_LAYOUT_PATTERNS = `# ======================================
 
 # --- 3. 比較・対比 (Comparison) ---
 - id: C01
-  name: 左右対比 (Before/After)
+  name: 左右対比 (Comparison / Diff)
   structure: split-contrast
-  description: 左右で対立する概念や、改善前後の変化を比較するレイアウト。
-  usage_hints: [Before/After、メリット/デメリット]
+  description: 左右で対立する概念の比較。エンジニアリング文脈では「Legacy vs Modern」や「変更前コード vs 変更後コード」のDiff表現に使用。
+  usage_hints: [Before/After、メリット/デメリット、コードのDiff、パフォーマンス比較]
 
 - id: C02
   name: 4象限マトリクス (Matrix)
@@ -201,87 +201,347 @@ export const DEFAULT_LAYOUT_PATTERNS = `# ======================================
   structure: visual-cover
   description: 全面背景と短いメッセージで感情に訴えるレイアウト。
   usage_hints: [重要なメッセージ、理念の共有]
+
+
+# --- 6. 技術・エンジニアリング (Technical & Engineering) ---
+# エンジニア向けの情報密度（コード、ログ、アーキテクチャ）を担保するレイアウト
+- id: T01
+  name: コード解説 (Code & Context)
+  structure: split-code-left-context
+  description: 左側に「実装の意図やポイント」、右側に「実際のコードブロック」を配置する。
+  usage_hints: [実装例の紹介、設定ファイルの解説、リファクタリング前後のコード]
+  required_content: [code_block, language_type] # AIにコード生成を強制する
+
+- id: T02
+  name: ターミナル/ログ (Terminal Output)
+  structure: window-console
+  description: 黒背景のコンソール画面を模したエリアに、実行ログやエラーメッセージを表示する。
+  usage_hints: [エラーの証拠提示、CLIコマンドの実行結果、パフォーマンス計測結果]
+  style_guide: "フォントは等幅(Monospace)、背景はDark Theme"
+
+- id: T03
+  name: アーキテクチャ図解 (System Architecture)
+  structure: diagram-mermaid
+  description: Mermaid記法を用いて、システム構成やデータの流れを可視化する。
+  usage_hints: [クラウド構成図、シーケンス図、ER図]
+  required_content: [mermaid_code] # 図の生成指示ではなく、Mermaidコードそのものを要求
+
+- id: T04
+  name: トラブルシューティング (Problem & Solution Code)
+  structure: stack-vertical-code
+  description: 上段に「発生したエラー（ログ）」、下段に「解決策（修正コード）」を配置する。
+  usage_hints: [バグ修正の知見共有、Incident Report]
 `;
 
-export const DEFAULT_SAMPLE_DESIGN_DOC = `# スライド設計図（構成案）
+export const DEFAULT_SAMPLE_DESIGN_DOC = `# ==========================================================
+# スライド構成案：詳細設計書 (Sample Output)
+# ==========================================================
 
-※これはAIが出力する設計図のサンプルです。実際の出力ではありません。
+slides:
 
----
-## スライド1: タイトル（表紙）
+  # --------------------------------------------------------
+  # Slide 1: タイトル（表紙）
+  # --------------------------------------------------------
+  - id: slide_01
+    title: "表紙"
+    
+    layout:
+      id: "S01"
+      name: "Title Slide"
+      
+    payload:
+      main_title: "2025年度 新業務基盤導入計画"
+      sub_title: "AI活用による工数削減とDX推進に向けて"
+      presenter_info: |
+        2025年4月1日
+        株式会社サンプル DX推進部
+        
+    visual_instruction:
+      - "背景はクリーンな白（#FFFFFF）を使用し、信頼感を演出する。"
+      - "メインタイトルは視認性を最大化するため、太字（Bold）かつ最大フォントサイズで配置。"
+      
+    speaker_notes: |
+      本日は、来年度から導入予定の「新業務基盤」について、
+      その目的と具体的な導入効果をご説明します。
 
-* **適用レイアウトパターンID:** \`S01\` (表紙)
-* **レイアウト選定理由:**
-    * プレゼンテーションの開始であり、タイトルを最も強調して伝えるため。
-* **画面構成と配置:**
-    * 背景はクリーンな白（#FFFFFF）。
-    * 画面中央よりやや上にメインタイトルを最大フォントで配置。
-    * その下にサブタイトルを配置。
-    * 画面右下に、日付と発表者情報を小さく配置。
-* **配置要素の詳細指示:**
-    * **メインタイトル:** 「2025年度 新業務基盤導入計画」
-    * **サブタイトル:** 「AI活用による工数削減とDX推進に向けて」
-    * **右下情報:** 「2025年4月1日 / 株式会社サンプル DX推進部」
 
----
-## スライド2: アジェンダ（目次）
+  # --------------------------------------------------------
+  # Slide 2: アジェンダ（目次）
+  # --------------------------------------------------------
+  - id: slide_02
+    title: "本日のアジェンダ"
+    
+    layout:
+      id: "S02"
+      name: "Agenda"
+      
+    payload:
+      # リスト項目を構造化配列として定義
+      agenda_items:
+        - "1. 導入の背景（現状の課題）"
+        - "2. 新業務フローの概要"
+        - "3. 期待される導入効果（まとめ）"
+        
+    visual_instruction:
+      - "左側に余白（マージン）を十分に取り、視線誘導のガイドラインを引く。"
+      - "箇条書きのナンバリングを大きく配置し、進行のスムーズさを印象付ける。"
+      
+    speaker_notes: |
+      大きく分けて3つのパートで進めます。
+      まずは現状の課題、次に新しいフロー、最後にその効果についてです。
 
-* **適用レイアウトパターンID:** \`S02\` (目次)
-* **レイアウト選定理由:**
-    * プレゼンテーションの全体像と流れを最初に共有するため。
-* **画面構成と配置:**
-    * 画面上部にスライドタイトル「本日のアジェンダ」を配置。
-    * その下に、大きな番号付きリストで各セクションのタイトルを縦に並べる。
-* **配置要素の詳細指示:**
-    * **リスト項目1:** 「1. 導入の背景（現状の課題）」
-    * **リスト項目2:** 「2. 新業務フローの概要」
-    * **リスト項目3:** 「3. 期待される導入効果（まとめ）」
 
----
-## スライド3: セクション区切り（第1章）
+  # --------------------------------------------------------
+  # Slide 3: セクション区切り（第1章）
+  # --------------------------------------------------------
+  - id: slide_03
+    title: "Section 1: 導入の背景"
+    
+    layout:
+      id: "S03"
+      name: "Section Divider"
+      
+    payload:
+      section_number: "1"
+      section_title: "導入の背景（現状の課題）"
+      
+    visual_instruction:
+      - "背景色をメインカラー（#0052CC）で塗りつぶし、反転文字（白）を使用。"
+      - "画面中央に要素を集中させ、話の転換点であることを視覚的に強調する。"
+      
+    speaker_notes: |
+      それではまず、なぜ今回このシステム導入が必要になったのか、
+      現状の課題から振り返ります。
 
-* **適用レイアウトパターンID:** \`S03\` (中扉)
-* **レイアウト選定理由:**
-    * ここから最初の主要な章が始まることを視覚的に明確にするため。
-* **画面構成と配置:**
-    * 背景色をメインカラー（#0052CC）で塗りつぶし、反転させる。
-    * 画面中央に、白文字で大きくセクション番号とタイトルを配置する。
-* **配置要素の詳細指示:**
-    * **中央テキスト:** 「1. 導入の背景（現状の課題）」
-    * **スタイル:** フォントカラーは白（#FFFFFF）、サイズは特大。
 
----
-## スライド6: 新業務フロー（導入後イメージ）
+  # --------------------------------------------------------
+  # Slide 4: 新業務フロー（導入後イメージ）
+  # --------------------------------------------------------
+  - id: slide_04
+    title: "新業務フローの全体像"
+    
+    layout:
+      id: "P01"
+      name: "Flow Process"
+      params: { "steps": 4, "direction": "horizontal" }
+      
+    payload:
+      # プロセスの各ステップを定義
+      steps:
+        - label: "Step 1: 受付"
+          detail: "Webフォーム入力" # (補足情報を追記可能にする枠)
+        - label: "Step 2: 審査"
+          detail: "AIによる一次判定"
+        - label: "Step 3: 承認"
+          detail: "管理者承認"
+        - label: "Step 4: 通知"
+          detail: "Slack/メール自動連携"
+          
+    visual_instruction:
+      - "左から右への時系列フロー図として描画。"
+      - "各ボックスを矢印（Chevron）で繋ぎ、自動化によるスピード感を表現する。"
+      
+    speaker_notes: |
+      新しいフローは非常にシンプルです。
+      「受付」から「通知」までがデジタル上で一気通貫で繋がり、
+      特にStep 2の審査プロセスではAI活用がカギとなります。
 
-* **適用レイアウトパターンID:** \`P01\` (フロー)
-* **レイアウト・パラメータ:** \`{ "steps": 4 }\`
-* **レイアウト選定理由:**
-    * 新しいシステム導入後の業務の流れを、時系列順に説明するため。
-* **画面構成と配置:**
-    * 画面左から右に向かって、4つのステップ（ボックス）を等間隔で横一列に並べ、矢印で繋ぐ。
-* **配置要素の詳細指示:**
-    * **Step 1:** 「受付」
-    * **Step 2:** 「審査」
-    * **Step 3:** 「承認」
-    * **Step 4:** 「通知」
 
----
-## スライド8: 導入による3つのメリット（まとめ）
+  # --------------------------------------------------------
+  # Slide 5: 導入による3つのメリット（まとめ）
+  # --------------------------------------------------------
+  - id: slide_05
+    title: "導入効果のまとめ"
+    
+    layout:
+      id: "L03"
+      name: "3 Columns Detail"
+      params: { "cols": 3 }
+      
+    payload:
+      # 全体の結論メッセージ（インパクト重視）
+      key_message: |
+        新システム導入により、業務スピードは **2倍**、
+        コストは **30%削減** を実現します。
+        
+      # 3つのカラム詳細
+      columns:
+        - heading: "Speed"
+          sub_text: "リードタイム短縮"
+          icon: "rocket"
+        - heading: "Cost"
+          sub_text: "人件費の最適化"
+          icon: "yen-sign"
+        - heading: "Quality"
+          sub_text: "ヒューマンエラーゼロ"
+          icon: "shield-check"
+          
+    visual_instruction:
+      - "上部のkey_messageにある数字（2倍, 30%）は、アクセントカラー（黄色）で強調し、フォントサイズを大きくする。"
+      - "下の3カラムはアイコンを大きく配置し、視覚的な定着を図る。"
+      
+    speaker_notes: |
+      結論です。スピード、コスト、品質。
+      この3点において、劇的な改善が見込まれます。
+      特にコストに関しては、初年度で回収可能な試算が出ています。
 
-* **適用レイアウトパターンID:** \`L03\` (3カラム詳細)
-* **レイアウト・パラメータ:** \`{ "cols": 3 }\`
-* **レイアウト選定理由:**
-    * 結論として、導入効果を3つの重要なポイントに絞り、並列で提示するため。
-* **画面構成と配置:**
-    * 画面上部にスライド全体の結論メッセージを配置。
-    * その下に、3つのポイント（列）を横並びで配置。
-* **配置要素の詳細指示:**
-    * **上部結論メッセージ:**
-        * テキスト: 「新システム導入により、業務スピードは**2倍**、コストは**30%削減**を実現します。」
-        * スタイル: 重要数字をアクセントカラー（黄色）で強調。
-    * **ポイント1:** 「スピード（Speed）」
-    * **ポイント2:** 「コスト（Cost）」
-    * **ポイント3:** 「品質（Quality）」
+  # --------------------------------------------------------
+  # Slide 6: 構造化のメリット（抽象論ではなくコードで証明する例）
+  # --------------------------------------------------------
+  - id: slide_06
+    title: "構造化のメリット：解釈の揺らぎをコードで拘束する"
+    
+    # エンジニア向けレイアウト: コード解説型
+    layout:
+      id: "T01"
+      name: "Code & Context"
+      params: { "split_ratio": "40:60" } # コードエリアを広く取る
+
+    # コンテンツ（情報の本体）
+    payload:
+      # 左カラム：文脈と概念
+      left_context:
+        heading: "Natural Language vs Structured Data"
+        summary: |
+          自然言語の曖昧さを排除し、IaC (Infrastructure as Code) のように
+          スライドの構成要素を管理する。
+        points:
+          - "**再現性の担保:** 同じコードからは必ず同じ構成が生成される"
+          - "**Diffによる管理:** 修正差分をGitで追跡可能にする"
+          - "**関心の分離:** 「見た目」と「構造」を切り離す"
+
+      # 右カラム：実証データ（ここが重要：Evidence）
+      right_evidence:
+        type: "code_comparison"
+        language: "yaml"
+        caption: "AIへの指示（Prompt）の比較：曖昧 vs 明確"
+        content: |
+          # Bad: 自然言語（解釈が揺れる）
+          prompt: "AWSの構成図をいい感じに作って。サーバーは2台くらいで。"
+          # -> 結果: 毎回違う図が出る / 意図しないアイコンが混ざる
+
+          # Good: 構造化データ（解釈が固定される）
+          diagram: |
+            graph TD
+              LB[ALB] -->|HTTPS| Web1[EC2: Active]
+              LB -->|HTTPS| Web2[EC2: Standby]
+              Web1 --> DB[(Aurora)]
+          # -> 結果: 定義した通りのリレーションが100%再現される
+
+    # デザイン指示
+    visual_instruction:
+      - "右側のコードブロックは、エディタ画面（Monokaiテーマなど）風のデザインにする。"
+      - "Goodのセクションだけハイライトし、Badとの対比を明確にする。"
+
+    # 発表者用メモ
+    speaker_notes: |
+      「いい感じにして」という指示は、エンジニアリングの世界ではバグの温床です。
+      スライド作成も同じで、YAMLやMermaidで構造を渡すことは、
+      デザインにおける型定義（Type Safety）のようなものです。
+
+
+  # --------------------------------------------------------
+  # Slide 7: 実行ログによる証拠提示 (T02 Sample)
+  # --------------------------------------------------------
+  - id: slide_07
+    title: "Execution Log: 100% Success Rate"
+    
+    layout:
+      id: "T02"
+      name: "Terminal Output"
+    
+    payload:
+      heading: "Build Process Logs"
+      output_lines:
+        - "[INFO] Starting slide generation..."
+        - "[INFO] Parsed 15 slides from design doc."
+        - "[WARN] Slide 4: Text overflow detected, auto-adjusting font size."
+        - "[SUCCESS] Generated slides.md in 2.4s."
+        - "[SUCCESS] PDF Export complete: output/presentation.pdf"
+        
+    visual_instruction:
+      - "コンソール画面は暗い背景色でリアリティを出す。"
+      - "SUCCESSの行は緑色、WARNは黄色でハイライトし、視認性を高める。"
+
+
+  # --------------------------------------------------------
+  # Slide 8: トラブルシューティング事例 (T04 Sample)
+  # --------------------------------------------------------
+  - id: slide_08
+    title: "Case Study: Layout Mismatch Error"
+    
+    layout:
+      id: "T04"
+      name: "Troubleshooting"
+      
+    payload:
+      error_section:
+        label: "Issue: 意図しないレイアウト崩れ"
+        log: "Error: Layout 'S01' expects 3 slots, but 4 were provided."
+        
+      solution_section:
+        label: "Fix: 定義書(YAML)の制約による自動修正"
+        code: |
+          # Before: 制限なし
+          # After: スキーマバリデーションを追加
+          if (slots.length > layout.max_slots) {
+             truncate(slots);
+          }
+          
+    visual_instruction:
+      - "上段のエラーは赤系、下段の解決策は青/緑系で色分けする。"
+      - "Before/Afterの対比が見えるように配置する。"
+
+
+  # --------------------------------------------------------
+  # Slide 9: プロセスの可視化（抽象図ではなくアーキテクチャ図の例）
+  # --------------------------------------------------------
+  - id: slide_09
+    title: "Phase 3: テキストを「コンパイル」してスライド化する"
+
+    # エンジニア向けレイアウト: アーキテクチャ図解型
+    layout:
+      id: "T03"
+      name: "Architecture Diagram"
+    
+    # コンテンツ
+    payload:
+      heading: "Automated Slide Generation Pipeline"
+      
+      # 図解の実体定義（Mermaidを直接記述）
+      diagram_code: |
+        sequenceDiagram
+            participant Human as 人間 (Architect)
+            participant LLM as AI (Builder)
+            participant Tool as Marp/SlideTool
+        
+            Human->>LLM: 1. ブログ記事 + レイアウト定義(YAML)
+            Note right of Human: 構造化された設計書
+        
+            LLM->>LLM: 2. 構造化データの生成
+            LLM-->>Human: 3. スライドYAML (Draft)
+            
+            Human->>Human: 4. Code Review & Fix
+            Note right of Human: テキストエディタで修正
+            
+            Human->>Tool: 5. レンダリング実行
+            Tool-->>Human: 6. 完成スライド (PDF/PPTX)
+
+      # 図解の補足ポイント
+      key_takeaways:
+        - "人間は「ドラフト作成」を行わず、「Review」に徹する"
+        - "GUIツールでの微調整を禁止し、全てテキスト（YAML）で制御する"
+
+    # デザイン指示
+    visual_instruction:
+      - "シーケンス図はシンプルに描画し、Humanの手戻りが最小であることを強調する。"
+      - "Toolへの矢印部分を「Automated」として強調色にする。"
+
+    # 発表者用メモ
+    speaker_notes: |
+      このフローの最大の特徴は、GUIを一切触らないことです。
+      CI/CDパイプラインのように、テキストを修正してコマンドを叩けば、
+      最新のスライドがデプロイされる感覚です。
 `;
 
 export const DEFAULT_MANUSCRIPT = `# AIスライド生成ツールの紹介

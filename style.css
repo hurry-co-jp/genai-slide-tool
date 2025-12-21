@@ -32,6 +32,17 @@
     font-size: 12px;
     line-height: 1.5;
     color: #334155;
+    overflow-x: auto;
+    /* Allow scrolling if needed as fallback */
+}
+
+/* Force Marp SVG to be responsive */
+.marpit>svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    margin-bottom: 2rem;
 }
 
 /* Loading Animation */

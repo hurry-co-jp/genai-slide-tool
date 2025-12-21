@@ -31,6 +31,8 @@ const assetEditor = el('assetEditor');
 const assetPreview = el('assetPreview');
 
 const editorManuscript = el('editorManuscript');
+const manuscriptPreview = el('manuscriptPreview');
+
 const editorDesignDoc = el('editorDesignDoc');
 const editorMarp = el('editorMarp');
 const marpPreviewContainer = el('marpPreviewContainer');
@@ -44,28 +46,11 @@ const btnDownloadDesign = el('btnDownloadDesign');
 const btnCopyMarp = el('btnCopyMarp');
 const btnDownloadMarp = el('btnDownloadMarp');
 
-// Marp Tabs (now just local UI logic within the Marp component if needed, 
-// though separate components for Code/Preview makes tabs potentially redundant in wide view?
-// Actually, the user might want to swap Code/Preview in the limited slots if they had less space,
-// but with Slide Mode we have distinct columns for Code and Preview, so tabs are less critical 
-// BUT we kept the "Code" component and "Preview" component separate in DOM.
-// Wait, in previous index.html I kept "Code" and "Preview" buttons in the Marp component header?
-// No, I separated them into `comp-marp` (Code) and `comp-preview` (Preview). 
-// So the tabs inside comp-marp might be removed or repurposed?
-// Let's check the new index.html ... 
-// Ah, `comp-marp` has "Code" label. `comp-preview` has "Preview" label.
-// The tabs "Code/Preview" were REMOVED from the index.html in the last refactor?
-// Let me double check... Yes, I replaced the complex 3rd column with distinct components.
-// `comp-marp` header has "Code". `comp-preview` header has "Preview".
-// So no tab logic needed for Marp anymore between Code/Preview! They are separate columns in Slide Mode.
-// However, in Draft Mode, we don't see Marp.
-// So effectively "Slide Mode" IS the split view.
-// Tabs are obsolete. Good.)
-
 // State
 let state = {
     currentMode: 'draft', // 'draft' | 'slide'
     assetMode: 'global-preview',   // 'global-edit'|'global-preview'|'layout-edit'|'layout-preview'
+    manuscriptMode: 'edit', // 'edit' | 'preview'
     definitions: {
         globalDesign: DEFAULT_GLOBAL_DESIGN,
         layoutPatterns: DEFAULT_LAYOUT_PATTERNS,
@@ -88,8 +73,7 @@ function init() {
         editorManuscript.addEventListener('input', (e) => {
             state.manuscript = e.target.value;
             // Update preview if visible
-            const preview = el('manuscriptPreview');
-            if (preview && !preview.classList.contains('hidden')) {
+            if (state.manuscriptMode === 'preview') {
                 renderManuscriptPreview();
             }
         });
@@ -145,8 +129,19 @@ function init() {
             });
         });
 
+        // Manuscript Tabs
+        document.querySelectorAll('.manuscript-tab').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const targetBtn = e.target.closest('.manuscript-tab');
+                const mode = targetBtn.dataset.mode;
+                if (mode) switchManuscriptMode(mode);
+            });
+        });
+
+
         // Initial State
         updateAssetView();
+        updateManuscriptView();
         setMode('draft');
 
         // Init Generation Settings
@@ -154,472 +149,589 @@ function init() {
             initGenerationSettings();
         }
 
-        console.log("App Initialized Successfully");
+        // --- Layout Preview Modal Logic ---
+        const modal = el('modalLayout');
+        const modalContent = el('modalLayoutContent');
+        const btnClose = el('btnCloseModal');
+        const modalPreview = el('modalPreviewContainer');
+        const modalTitle = el('modalTitle');
+        const modalDesc = el('modalDesc');
+
+        if (modal && modalContent && btnClose) {
+            // Close Modal Function
+            const closeModal = () => {
+                console.log("Closing Modal...");
+
+                // Reset Opacity (Trigger transition)
+                modal.classList.add('opacity-0');
+                modal.style.opacity = '0'; // Explicit override
+
+                modalContent.classList.remove('scale-100');
+                modalContent.classList.add('scale-95');
+
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.style.display = 'none'; // Explicit override
+                }, 200);
+            };
+
+            // Event: Close Button
+            btnClose.addEventListener('click', closeModal);
+
+            // Event: Outside Click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+
+            // Event: Open Modal (Delegation)
+            // We attach this to document because gallery items are dynamic
+            document.addEventListener('click', (e) => {
+                // console.log("Click detected on:", e.target);
+                const card = e.target.closest('.layout-card');
+
+                if (card && card.dataset.layoutId) {
+                    console.log("Layout card clicked:", card.dataset.layoutId);
+                    e.stopPropagation(); // Just in case
+                    const id = card.dataset.layoutId;
+
+                    // Simplify: Use first child for preview container
+                    const previewNode = card.children[0];
+                    if (!previewNode) {
+                        console.error("Preview node not found for card:", card);
+                        return;
+                    }
+
+                    const titleText = card.querySelector('.font-bold')?.textContent || "No Title";
+                    const descText = card.querySelector('.line-clamp-2')?.title || "";
+
+                    // --- FORCE VISIBILITY FIRST ---
+                    // This is CRITICAL. The modal must be visible (display: flex) 
+                    // before we can get `modalPreview.offsetWidth`.
+                    // If it is hidden, offsetWidth is 0, scale becomes 0/Infinity.
+                    // We keep opacity-0 so it is technically invisible but rendered.
+                    modal.classList.remove('hidden');
+                    modal.style.display = 'flex';
+
+                    // Populate Modal with Scaled Content
+                    // console.log("Populating modal with scaled content:", id);
+
+                    // Clear previous content
+                    modalPreview.innerHTML = '';
+
+                    // Create a wrapper that mimics the original card size but scaled up
+                    const wrapper = document.createElement('div');
+                    wrapper.innerHTML = previewNode.innerHTML;
+
+                    // Get dimensions
+                    const srcWidth = previewNode.offsetWidth || 300; // Fallback
+                    const srcHeight = previewNode.offsetHeight || 169;
+                    const targetWidth = modalPreview.offsetWidth; // Now this should be valid (~800-900 usually)
+
+                    // Calculate Scale
+                    // We want to fit width
+                    const scale = targetWidth / srcWidth;
+                    // console.log(`Scale Calc: ${targetWidth} / ${srcWidth} = ${scale}`);
+
+                    if (!isFinite(scale) || scale <= 0) {
+                        console.warn("Invalid scale calculated, fallback to 1", scale);
+                        wrapper.style.transform = 'scale(1)';
+                    } else {
+                        // Apply styles to wrapper to force it to be "thumbnail size" then scaled up
+                        wrapper.style.width = `${srcWidth}px`;
+                        wrapper.style.height = `${srcHeight}px`;
+                        wrapper.style.transform = `scale(${scale})`;
+                        wrapper.style.transformOrigin = 'top left';
+                    }
+
+                    modalPreview.appendChild(wrapper);
+
+                    modalTitle.textContent = `${id} - ${titleText}`;
+                    modalDesc.textContent = descText;
+
+                    // Force Opacity Reset immediately to trigger fade-in
+                    requestAnimationFrame(() => {
+                        modal.classList.remove('opacity-0');
+                        modal.style.opacity = '1';
+                        modalContent.classList.remove('scale-95');
+                        modalContent.classList.add('scale-100');
+                    });
+                }
+            });
+        } else {
+            console.error("Layout Preview Modal elements not found! Check index.html IDs.", { modal, modalContent, btnClose });
+        }
+
+        // --- API Key Persistence ---
+        const apiKeyInput = el('apiKeyInput');
+        if (apiKeyInput) {
+            // Load
+            const savedKey = localStorage.getItem('gemini_api_key');
+            if (savedKey) apiKeyInput.value = savedKey;
+
+            // Save on Change
+            apiKeyInput.addEventListener('input', (e) => {
+                localStorage.setItem('gemini_api_key', e.target.value);
+            });
+        }
+
+
+        // --- Manuscript Line Numbers ---
+        setupLineNumbers(editorManuscript, el('ln-manuscript'));
+        setupLineNumbers(editorDesignDoc, el('ln-design'));
+        setupLineNumbers(editorMarp, el('ln-marp'));
+        setupLineNumbers(assetEditor, el('ln-assets'));
+
     } catch (e) {
-        alert("Init Error: " + e.message);
-        console.error(e);
+        console.error("Critical Init Error:", e);
     }
 }
 
-// ... (setMode remains same) ...
+// --- Generation Settings Helpers ---
+function getInstructionFromSettings() {
+    // Corrected IDs to match index.html: param-{key}
+    const sVis = document.getElementById('param-visual')?.value || 3;
+    const sDetail = document.getElementById('param-depth')?.value || 3; // depth -> Detail
+    const sTone = document.getElementById('param-tone')?.value || 3;
+    const sAud = document.getElementById('settingAudience')?.value || 3; // Is it param-audience? Check HTML.
 
-// --- Mode Logic ---
-function setMode(mode) {
-    state.currentMode = mode;
+    // Checked HTML: Audience ID is not visible in snippet. Assuming param-audience logic or similar.
+    // Let's verify via el('param-audience') if it fails fallback to 3.
+    // Wait, snippet didn't show Audience entirely. 
+    // Assuming param-audience based on pattern.
 
-    // UI Feedback
-    if (mode === 'draft') {
-        btnModeDraft.dataset.active = 'true';
-        btnModeSlide.dataset.active = 'false';
-    } else {
-        btnModeDraft.dataset.active = 'false';
-        btnModeSlide.dataset.active = 'true';
+    // Map 1-5 to text (UI uses 1-5 range now?)
+    // Snippet showed min=1 max=5 value=3.
+    const mapVal = (val, labels) => {
+        const v = parseInt(val);
+        if (v <= 2) return labels[0]; // 1, 2
+        if (v === 3) return labels[1]; // 3
+        return labels[2]; // 4, 5
+    };
+
+    // More explicit/stronger instruction mapping
+    const visualText = mapVal(sVis, [
+        "Text-heavy, minimal visuals.",
+        "Balanced text and visuals.",
+        "Visual-first, minimal text."
+    ]);
+
+    const detailText = mapVal(sDetail, [
+        "Concise summary, bullet points.",
+        "Standard detail.",
+        "Comprehensive coverage, detailed explanations."
+    ]);
+
+    const toneText = mapVal(sTone, [
+        "Friendly, casual.",
+        "Professional, standard.",
+        "Formal, academic."
+    ]);
+
+    // Audience (if ID matches)
+    // const audText = ... (omitted if unsure, or use default)
+
+    return `
+SETTINGS PRIORITY:
+- Detail Level: ${detailText} (Value: ${sDetail})
+- Visual Ratio: ${visualText} (Value: ${sVis})
+- Tone: ${toneText}
+`;
+}
+
+function initGenerationSettings() {
+    // Corrected IDs: btnDesignSettings, popoverDesignSettings
+    const btnSettings = el('btnDesignSettings');
+    const popover = el('popoverDesignSettings');
+
+    // Close button might not exist in popover? 
+    // HTML snippet didn't show a close button inside popover, just title.
+    // Index.html logic can rely on outside click.
+
+    if (!btnSettings || !popover) {
+        console.warn("Generation Settings elements not found: btnDesignSettings or popoverDesignSettings");
+        return;
     }
 
-    // Reset Slots (Move existing children back to store to preserve state)
-    // We append children to store so they are effectively "parked"
-    [col1, col2, col3].forEach(col => {
-        while (col.firstChild) {
-            componentStore.appendChild(col.firstChild);
+    const toggleSettings = () => {
+        popover.classList.toggle('hidden');
+    };
+
+    btnSettings.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleSettings();
+    });
+
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+        if (!popover.contains(e.target) && e.target !== btnSettings) {
+            popover.classList.add('hidden');
         }
     });
 
-    // Populate Slots based on Mode
-    if (mode === 'draft') {
-        // Mode 1: Assets | Manuscript | Design
-        col1.appendChild(compAssets);
-        col2.appendChild(compManuscript);
-        col3.appendChild(compDesign);
-    } else {
-        // Mode 2: Design | Marp | Preview
-        col1.appendChild(compDesign);
-        col2.appendChild(compMarp);
-        col3.appendChild(compPreview);
+    // Slider display updates (param-{key} -> val-{key})
+    const paramMap = {
+        'depth': 'val-depth',
+        'visual': 'val-visual',
+        'tone': 'val-tone'
+        // 'audience': 'val-audience' // Check HTML if needed
+    };
 
-        // Trigger render when entering slide mode if we have content
-        if (state.marpCode) renderMarpitPreview();
+    Object.keys(paramMap).forEach(key => {
+        const slider = el(`param-${key}`);
+        const disp = el(paramMap[key]);
+        const labels = {
+            'depth': ['要約', '標準', '網羅'],
+            'visual': ['文字', '標準', '図解'],
+            'tone': ['固め', '標準', '緩め']
+        };
+
+        if (slider && disp) {
+            slider.addEventListener('input', (e) => {
+                // Update text based on 1-5 value? 
+                // HTML says: <span>要約</span><span>網羅</span> keys.
+                // Simple mapping: 1-2=Left, 3=Mid, 4-5=Right
+                const v = parseInt(e.target.value);
+                let text = "標準";
+                if (v <= 2) text = labels[key][0];
+                else if (v >= 4) text = labels[key][2];
+                else text = labels[key][1];
+
+                disp.textContent = text;
+            });
+        }
+    });
+}
+
+// --- Action Handlers ---
+
+async function handleGenerateDesign() {
+    console.log("Generate Design Clicked");
+    const topic = editorManuscript.value.trim();
+    if (!topic) {
+        alert("Please enter a manuscript or topic first.");
+        return;
+    }
+
+    const apiKey = el('apiKeyInput').value.trim();
+    if (!apiKey) {
+        alert("Please enter your Gemini API Key.");
+        return;
+    }
+
+    // Get selected model
+    const modelId = el('modelSelect')?.value || 'gemini-1.5-flash';
+
+    const btn = btnGenerateDesign;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+    btn.disabled = true;
+
+    try {
+        const settingsInstruction = getInstructionFromSettings();
+        // Pass modelId
+        const designDoc = await llmService.generateDesignDoc(apiKey, topic, state.definitions, modelId, settingsInstruction);
+        state.designDoc = designDoc;
+        editorDesignDoc.value = designDoc;
+        // Trigger input event to update line numbers
+        editorDesignDoc.dispatchEvent(new Event('input'));
+
+        setMode('slide'); // Switch to view result
+        // TODO: Notification toast?
+    } catch (err) {
+        console.error(err);
+        alert("Generation failed: " + err.message);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
     }
 }
 
-// --- Asset Logic ---
+async function handleRenderMarp() {
+    console.log("Render Marp Clicked");
+    const designDoc = editorDesignDoc.value.trim();
+    if (!designDoc) {
+        alert("Design Document is empty.");
+        return;
+    }
+
+    const apiKey = el('apiKeyInput').value.trim();
+    if (!apiKey) {
+        alert("Please enter your Gemini API Key.");
+        return;
+    }
+
+    // Get selected model
+    const modelId = el('modelSelect')?.value || 'gemini-1.5-flash';
+
+    const btn = btnRenderMarp;
+    const originalText = btn.innerHTML; // Capture original icon/text
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Rendering...';
+    btn.disabled = true;
+
+    try {
+        // 1. Generate Marp Markdown
+        const marpMd = await llmService.generateMarpCode(apiKey, designDoc, state.definitions, null, modelId);
+        state.marpCode = marpMd;
+        editorMarp.value = marpMd;
+        editorMarp.dispatchEvent(new Event('input')); // Update line numbers
+
+        // 2. Render HTML Preview
+        renderMarpPreview(marpMd);
+
+    } catch (err) {
+        console.error(err);
+        alert("Rendering failed: " + err.message);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+// --- UI Helpers ---
+
+function updateAssetView() {
+    console.log("updateAssetView called. Mode:", state.assetMode);
+    const isGlobal = state.assetMode.includes('global');
+    const isEdit = state.assetMode.includes('edit');
+    // const isLayout = state.assetMode.includes('layout');
+
+    // Update Tab Active States
+    document.querySelectorAll('.asset-tab').forEach(btn => {
+        const mode = btn.dataset.mode;
+        if (mode === state.assetMode) {
+            // Active Style
+            btn.classList.add('bg-blue-600', 'text-white');
+            btn.classList.remove('bg-gray-200', 'text-gray-700');
+        } else {
+            btn.classList.remove('bg-blue-600', 'text-white');
+            btn.classList.add('bg-gray-200', 'text-gray-700');
+        }
+    });
+
+    // Show/Hide Editor or Preview
+    if (isEdit) {
+        assetEditor.classList.remove('hidden');
+        assetPreview.classList.add('hidden');
+        // Set Content
+        if (isGlobal) {
+            assetEditor.value = state.definitions.globalDesign;
+        } else {
+            assetEditor.value = state.definitions.layoutPatterns;
+        }
+        // assetEditor.dispatchEvent(new Event('input')); // Update line numbers
+        // We need to manually update lines because setting .value doesn't trigger input
+        requestAnimationFrame(() => updateLineNumbers(assetEditor, el('ln-assets')));
+
+    } else {
+        assetEditor.classList.add('hidden');
+        assetPreview.classList.remove('hidden');
+
+        // Render content based on mode
+        if (state.assetMode === 'global-preview') {
+            // Use Render Logic from preview_renderer.js
+            assetPreview.innerHTML = '<div class="text-center p-4 text-gray-500">Loading Style Guide...</div>';
+
+            renderPreview.renderStyleGuide(state.definitions.globalDesign).then(html => {
+                assetPreview.innerHTML = html;
+            }).catch(e => {
+                console.error("Style Guide Render Error:", e);
+                assetPreview.innerHTML = `<div class="text-red-500 p-4">Error rendering style guide: ${e.message}</div><pre class="text-xs text-gray-500 overflow-auto p-4">${state.definitions.globalDesign}</pre>`;
+            });
+
+        } else if (state.assetMode === 'layout-preview') {
+            // Render Layout Gallery
+            renderPreview.renderLayoutGallery(state.definitions.layoutPatterns).then(html => {
+                assetPreview.innerHTML = html;
+            }).catch(e => {
+                console.error("Layout Gallery Render Error:", e);
+                assetPreview.innerHTML = `<div class="text-red-500 p-4">Error rendering layout gallery: ${e.message}</div>`;
+            });
+        }
+
+        el('ln-assets').innerHTML = ''; // Clear lines for preview
+    }
+}
+
 function switchAssetMode(mode) {
     state.assetMode = mode;
     updateAssetView();
 }
 
-function updateAssetView() {
-    // 1. Update Tab Styles
-    document.querySelectorAll('.asset-tab').forEach(t => {
-        if (t.dataset.mode === state.assetMode) {
-            t.classList.add('bg-white', 'shadow-sm', 'text-slate-700');
-            t.classList.remove('text-slate-500', 'hover:text-slate-700');
+function updateManuscriptView() {
+    const isEdit = state.manuscriptMode === 'edit';
+
+    // Update Tab Active States
+    document.querySelectorAll('.manuscript-tab').forEach(btn => {
+        const mode = btn.dataset.mode;
+        if (mode === state.manuscriptMode) {
+            btn.classList.add('bg-blue-600', 'text-white');
+            btn.classList.remove('bg-white', 'text-slate-700', 'shadow-sm'); // Remove default inactive (white/slate)
+            btn.classList.remove('text-slate-500', 'hover:text-slate-700'); // Remove inactive text
         } else {
-            t.classList.remove('bg-white', 'shadow-sm', 'text-slate-700');
-            t.classList.add('text-slate-500', 'hover:text-slate-700');
+            btn.classList.remove('bg-blue-600', 'text-white');
+            // Add inactive classes based on context (simplified)
+            btn.classList.add('text-slate-500', 'hover:text-slate-700');
         }
     });
 
-    // 2. Logic for Editor vs Preview
-    const isEdit = state.assetMode.includes('edit');
-    const isGlobal = state.assetMode.includes('global');
-
+    // Toggle Visibility
     if (isEdit) {
-        assetEditor.classList.remove('hidden');
-        if (assetPreview) assetPreview.classList.add('hidden');
-
-        // Update Editor Content
-        assetEditor.value = isGlobal ? state.definitions.globalDesign : state.definitions.layoutPatterns;
+        editorManuscript.classList.remove('hidden');
+        manuscriptPreview.classList.add('hidden');
+        el('ln-manuscript').classList.remove('hidden');
+        requestAnimationFrame(() => updateLineNumbers(editorManuscript, el('ln-manuscript')));
     } else {
-        assetEditor.classList.add('hidden');
-        if (assetPreview) assetPreview.classList.remove('hidden');
-        updateAssetPreview();
+        editorManuscript.classList.add('hidden');
+        manuscriptPreview.classList.remove('hidden');
+        el('ln-manuscript').classList.add('hidden');
+        renderManuscriptPreview();
     }
 }
 
-async function updateAssetPreview() {
-    if (!assetPreview || assetPreview.classList.contains('hidden')) return;
-
-    assetPreview.innerHTML = '<div class="p-4 text-slate-400">Rendering preview...</div>';
-    try {
-        if (renderPreview) {
-            if (state.assetMode.includes('global')) {
-                assetPreview.innerHTML = await renderPreview.renderStyleGuide(state.definitions.globalDesign);
-            } else {
-                assetPreview.innerHTML = await renderPreview.renderLayoutGallery(state.definitions.layoutPatterns);
-            }
-        }
-    } catch (e) {
-        assetPreview.innerHTML = `<div class="p-4 text-red-500">Preview Error: ${e.message}</div>`;
-    }
+function switchManuscriptMode(mode) {
+    state.manuscriptMode = mode;
+    updateManuscriptView();
 }
 
-// --- Marp Logic ---
-function renderMarpitPreview() {
-    if (!state.marpCode) {
-        marpPreviewContainer.innerHTML = '<div class="flex items-center justify-center h-full text-slate-400">No content to preview</div>';
-        return;
+// --- Layout Map Strategy ---
+const LayoutMap = {
+    draft: () => {
+        // Col 1: Assets (Design Definition)
+        col1.appendChild(compAssets);
+        // Col 2: Manuscript (Center)
+        col2.appendChild(compManuscript);
+        // Col 3: Design Doc (Reference/Preview - Right)
+        col3.appendChild(compDesign);
+
+        col1.classList.remove('hidden');
+        col2.classList.remove('hidden');
+        col3.classList.remove('hidden'); // Show all 3 columns
+
+        compAssets.classList.remove('hidden');
+        compManuscript.classList.remove('hidden');
+        compDesign.classList.remove('hidden');
+        compMarp.classList.add('hidden');
+        compPreview.classList.add('hidden');
+    },
+    slide: () => {
+        // Move Design to Col 1
+        col1.appendChild(compDesign);
+        // Move Marp to Col 2
+        col2.appendChild(compMarp);
+        // Move Preview to Col 3
+        col3.appendChild(compPreview);
+
+        col1.classList.remove('hidden');
+        col2.classList.remove('hidden');
+        col3.classList.remove('hidden');
+
+        compDesign.classList.remove('hidden');
+        compMarp.classList.remove('hidden');
+        compPreview.classList.remove('hidden');
+
+        compAssets.classList.add('hidden');
+        compManuscript.classList.add('hidden');
     }
-
-    try {
-        const marpit = new Marpit({
-            markdown: { html: true, breaks: true },
-            inlineSVG: true
-        });
-
-        const { html, css } = marpit.render(state.marpCode);
-
-        marpPreviewContainer.innerHTML = `
-            <style>
-                ${css}
-                .marpit { 
-                    margin: 0 auto; 
-                    padding: 20px; 
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    width: 100%;
-                }
-                .marpit > svg { 
-                    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); 
-                    margin-bottom: 20px; 
-                    width: 100%;
-                    height: auto;
-                    display: block;
-                }
-            </style>
-            <div class="marpit">${html}</div>
-        `;
-
-    } catch (e) {
-        console.error("Marpit Render Error (ESM):", e);
-        marpPreviewContainer.innerHTML = `<div class="text-red-400 p-4">Preview Error: ${e.message}<br><small>Check console for details</small></div>`;
-    }
-}
-
-// --- Generation Settings Logic ---
-function initGenerationSettings() {
-    const btnSettings = el('btnDesignSettings');
-    const popoverSettings = el('popoverDesignSettings');
-
-    // Safety check if elements exist (in case index.html update failed)
-    if (!btnSettings || !popoverSettings) return;
-
-    // Toggle Popover
-    btnSettings.addEventListener('click', (e) => {
-        e.stopPropagation();
-        popoverSettings.classList.toggle('hidden');
-    });
-
-    // Close on outside click
-    document.addEventListener('click', (e) => {
-        if (!popoverSettings.classList.contains('hidden') &&
-            !popoverSettings.contains(e.target) &&
-            !btnSettings.contains(e.target)) {
-            popoverSettings.classList.add('hidden');
-        }
-    });
-
-    // Dynamic Slider Labels
-    const depthMap = ["", "要約", "やや簡潔", "標準", "やや詳細", "網羅"];
-    const visualMap = ["", "文字", "やや文字", "標準", "やや図解", "図解"];
-    const toneMap = ["", "堅め", "やや堅め", "標準", "やや緩め", "緩め"];
-    const audienceMap = ["", "初学", "基礎", "標準", "実務", "専門"];
-
-    const bindSlider = (key, map) => {
-        const range = el(`param-${key}`);
-        if (range) {
-            const update = () => {
-                const valEl = el(`val-${key}`);
-                if (valEl) valEl.innerText = map[range.value] || range.value;
-            }
-            range.addEventListener('input', update);
-            update(); // Init
-        }
-    };
-
-    bindSlider('depth', depthMap);
-    bindSlider('visual', visualMap);
-    bindSlider('tone', toneMap);
-    bindSlider('audience', audienceMap);
-}
-
-function getInstructionFromSettings() {
-    const getVal = (id) => {
-        const elRange = el(id);
-        return elRange ? parseInt(elRange.value) : 3;
-    }
-
-    const depth = getVal('param-depth');
-    const visual = getVal('param-visual');
-    const tone = getVal('param-tone');
-    const audience = getVal('param-audience');
-
-    const depthMap = ["", "極めて簡潔（要点のみ）", "やや簡潔", "標準", "やや詳細", "詳細（網羅的）"];
-    const visualMap = ["", "テキスト中心", "ややテキスト多め", "標準", "やや図解多め", "ビジュアル・図解中心"];
-    const toneMap = ["", "極めてフォーマル・堅め", "やや堅め", "標準", "やや親しみやすく", "エモーショナル・フランク"];
-    const audienceMap = ["", "完全な初学者・一般層", "基礎知識レベル", "標準", "実務経験者", "高度な専門家"];
-
-    const instructions = [];
-    if (depth != 3) instructions.push(`詳細度: ${depthMap[depth]}`);
-    if (visual != 3) instructions.push(`ビジュアル比率: ${visualMap[visual]}`);
-    if (tone != 3) instructions.push(`トーン: ${toneMap[tone]}`);
-    if (audience != 3) instructions.push(`ターゲット読者: ${audienceMap[audience]}`);
-
-    return instructions.join('\n');
 };
 
-// --- Action Handlers ---
-async function handleGenerateDesign() {
-    // Generation Settings Logic
-    const btnSettings = el('btnDesignSettings');
-    const popoverSettings = el('popoverDesignSettings');
-    const params = {
-        depth: el('param-depth'),
-        visual: el('param-visual'),
-        tone: el('param-tone'),
-        audience: el('param-audience')
-    };
+function setMode(mode) {
+    state.currentMode = mode;
 
-    // Toggle Popover
-    if (btnSettings && popoverSettings) {
-        btnSettings.addEventListener('click', (e) => {
-            e.stopPropagation();
-            popoverSettings.classList.toggle('hidden');
-        });
+    // Button Styles
+    const activeClass = ['bg-blue-600', 'text-white'];
+    const inactiveClass = ['bg-white', 'text-gray-700', 'hover:bg-gray-50'];
 
-        // Close on outside click
-        document.addEventListener('click', (e) => {
-            if (!popoverSettings.classList.contains('hidden') &&
-                !popoverSettings.contains(e.target) &&
-                !btnSettings.contains(e.target)) {
-                popoverSettings.classList.add('hidden');
-            }
-        });
-    }
+    if (mode === 'draft') {
+        btnModeDraft.classList.add(...activeClass);
+        btnModeDraft.classList.remove(...inactiveClass);
+        btnModeSlide.classList.remove(...activeClass);
+        btnModeSlide.classList.add(...inactiveClass);
 
-    // Helper to get text from slider values
-    const getInstructionFromSettings = () => {
-        const p = params;
-        if (!p.depth) return '';
+        LayoutMap.draft();
 
-        const depthMap = ["", "極めて簡潔（要点のみ）", "やや簡潔", "標準", "やや詳細", "詳細（網羅的）"];
-        const visualMap = ["", "テキスト中心", "ややテキスト多め", "標準", "やや図解多め", "ビジュアル・図解中心"];
-        const toneMap = ["", "極めてフォーマル・堅め", "やや堅め", "標準", "やや親しみやすく", "エモーショナル・フランク"];
-        const audienceMap = ["", "完全な初学者・一般層", "基礎知識レベル", "標準", "実務経験者", "高度な専門家"];
+        // Refresh hidden editors if needed
+        requestAnimationFrame(() => updateLineNumbers(editorManuscript, el('ln-manuscript')));
 
-        const instructions = [];
-        if (p.depth.value != 3) instructions.push(`詳細度: ${depthMap[p.depth.value]}`);
-        if (p.visual.value != 3) instructions.push(`ビジュアル比率: ${visualMap[p.visual.value]}`);
-        if (p.tone.value != 3) instructions.push(`トーン: ${toneMap[p.tone.value]}`);
-        if (p.audience.value != 3) instructions.push(`ターゲット読者: ${audienceMap[p.audience.value]}`);
+    } else {
+        btnModeSlide.classList.add(...activeClass);
+        btnModeSlide.classList.remove(...inactiveClass);
+        btnModeDraft.classList.remove(...activeClass);
+        btnModeDraft.classList.add(...inactiveClass);
 
-        return instructions.join('\n');
-    };
-
-    const apiKey = el('apiKeyInput').value;
-    const model = el('modelSelect').value;
-
-    if (!apiKey) { alert('Please enter Gemini API Key.'); return; }
-
-    const originalText = btnGenerateDesign.innerHTML;
-    btnGenerateDesign.disabled = true;
-    btnGenerateDesign.innerHTML = '<span class="loader border-white/30 border-t-white w-3 h-3"></span>';
-
-    try {
-        if (llmService) {
-            const instruction = getInstructionFromSettings();
-            console.log("Generating with instruction:", instruction);
-            const doc = await llmService.generateDesignDoc(apiKey, state.manuscript, state.definitions, model, instruction);
-            state.designDoc = doc;
-            editorDesignDoc.value = doc;
-            editorDesignDoc.dispatchEvent(new Event('input'));
-        }
-    } catch (e) {
-        alert('Error: ' + e.message);
-    } finally {
-        btnGenerateDesign.disabled = false;
-        btnGenerateDesign.innerHTML = originalText;
+        LayoutMap.slide();
     }
 }
 
-async function handleRenderMarp() {
-    const apiKey = el('apiKeyInput').value;
-    const model = el('modelSelect').value;
 
-    if (!state.designDoc) { alert('Design Doc required.'); return; }
-    if (!apiKey) { alert('API Key required.'); return; }
+function renderMarpPreview(marpMd) {
+    const marpit = new Marpit();
 
-    const originalText = btnRenderMarp.innerHTML;
-    btnRenderMarp.disabled = true;
-    btnRenderMarp.innerHTML = '<span class="loader border-white/30 border-t-white w-3 h-3"></span>';
+    // render returns { html, css }
+    const { html, css } = marpit.render(marpMd);
 
-    try {
-        if (marpGenerator && llmService) {
-            let cssTheme = '';
-            try {
-                const globalDesign = jsyaml.load(state.definitions.globalDesign);
-                cssTheme = marpGenerator.generateCSS(globalDesign);
-            } catch (e) { cssTheme = "/* CSS Gen Failed */"; }
+    const htmlContent = `
+        <style>${css}</style>
+        <div class="marpit">${html}</div>
+    `;
 
-            const marpContent = await llmService.generateMarpCode(
-                apiKey, state.designDoc, state.definitions, cssTheme, model
-            );
+    // We utilize shadow DOM or iframe to isolate styles? 
+    // Marpit styles are scoped usually.
+    // For simplicity, just innerHTML but watch out for global style pollution.
+    // Marpit creates scoped styles if you use proper container.
 
-            state.marpCode = marpContent;
-            editorMarp.value = marpContent;
-            editorMarp.dispatchEvent(new Event('input'));
-
-            // If in Slide Mode, update preview immediately
-            if (state.currentMode === 'slide') renderMarpitPreview();
-
-            // Auto switch to Slide Mode if not already? Maybe better let user choose.
-            // But if they clicked generate in Draft Mode (which doesn't have Render Marp button... wait)
-            // The Render Marp button is in 'comp-marp'.
-            // 'comp-marp' is ONLY visible in Slide Mode.
-            // So user MUST be in Slide Mode to generate Marp.
-            // So auto-update of preview is safe.
-        }
-    } catch (e) {
-        alert('Error: ' + e.message);
-    } finally {
-        btnRenderMarp.disabled = false;
-        btnRenderMarp.innerHTML = originalText;
-    }
-}
-
-// --- Helpers ---
-function copyToClipboard(text) {
-    if (!text) return;
-    navigator.clipboard.writeText(text);
-}
-
-function downloadFile(filename, content) {
-    if (!content) return;
-    const blob = new Blob([content], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
-
-// --- Line Numbers Logic ---
-function updateLineNumbers(textarea, lnContainer) {
-    if (!textarea || !lnContainer) return;
-
-    // Calculate line count
-    const lines = textarea.value.split('\n').length;
-    // Generate numbers (e.g., 1\n2\n3...)
-    lnContainer.innerText = Array(lines).fill(0).map((_, i) => i + 1).join('\n');
-
-    // Sync scroll
-    lnContainer.scrollTop = textarea.scrollTop;
-}
-
-function setupLineNumbers(textareaId, lnContainerId) {
-    const ta = el(textareaId);
-    const ln = el(lnContainerId);
-    if (!ta || !ln) return;
-
-    ta.addEventListener('input', () => updateLineNumbers(ta, ln));
-    ta.addEventListener('scroll', () => { ln.scrollTop = ta.scrollTop; });
-
-    // Initial update
-    updateLineNumbers(ta, ln);
-
-    // Resize observer to handle layout changes affecting line wrapping (though wrapping adds complexity, for pure line breaks this is fine)
-    // Note: If text wraps effectively increasing visual lines without newlines, this simple method desyncs. 
-    // For now assuming Markdown inputs where line breaks are explicit or accept subtle desync on wrap.
-    // To handle wrap strictly requires complex DOM mirroring. We'll stick to simple newline counting for now as "faint reference".
-}
-
-// --- Manuscript Logic ---
-function initManuscriptTabs() {
-    document.querySelectorAll('.manuscript-tab').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const mode = e.currentTarget.dataset.mode; // 'edit' | 'preview'
-
-            // Toggle UI
-            document.querySelectorAll('.manuscript-tab').forEach(b => {
-                const isActive = b.dataset.mode === mode;
-                if (isActive) {
-                    b.classList.add('bg-white', 'shadow-sm', 'text-slate-700');
-                    b.classList.remove('text-slate-500', 'hover:text-slate-700');
-                } else {
-                    b.classList.remove('bg-white', 'shadow-sm', 'text-slate-700');
-                    b.classList.add('text-slate-500', 'hover:text-slate-700');
-                }
-            });
-
-            const ln = el('ln-manuscript');
-            const editor = editorManuscript;
-            const preview = el('manuscriptPreview');
-
-            if (mode === 'edit') {
-                ln.classList.remove('hidden');
-                editor.classList.remove('hidden');
-                preview.classList.add('hidden');
-            } else {
-                ln.classList.add('hidden');
-                editor.classList.add('hidden');
-                preview.classList.remove('hidden');
-                renderManuscriptPreview();
-            }
-        });
-    });
+    marpPreviewContainer.innerHTML = htmlContent;
 }
 
 function renderManuscriptPreview() {
-    const container = el('manuscriptPreview');
-    if (!container || !MarkdownIt) return;
+    const md = new MarkdownIt();
+    const html = md.render(state.manuscript);
 
-    try {
-        const md = new MarkdownIt({ breaks: true });
-        container.innerHTML = md.render(state.manuscript);
-    } catch (e) {
-        container.innerHTML = `<div class="text-red-500">Preview Error: ${e.message}</div>`;
+    if (manuscriptPreview) {
+        manuscriptPreview.innerHTML = html;
     }
 }
 
-
-// --- Dark Mode Logic ---
-function initDarkMode() {
-    const btnToggle = el('btnToggleDark');
-    if (!btnToggle) return;
-
-    // Check Preference
-    const saved = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const isDark = saved === 'dark' || (!saved && prefersDark);
-
-    if (isDark) {
-        document.documentElement.classList.add('dark');
-    } else {
-        document.documentElement.classList.remove('dark');
-    }
-
-    // Toggle Handler
-    btnToggle.addEventListener('click', () => {
-        const isDarkNow = document.documentElement.classList.contains('dark');
-        if (isDarkNow) {
-            document.documentElement.classList.remove('dark');
-            localStorage.setItem('theme', 'light');
-        } else {
-            document.documentElement.classList.add('dark');
-            localStorage.setItem('theme', 'dark');
-        }
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        alert("Copied to clipboard!");
     });
 }
 
-// Start
-init();
-initManuscriptTabs();
-initDarkMode();
-// Setup Line Numbers
-setupLineNumbers('assetEditor', 'ln-assets');
-setupLineNumbers('editorManuscript', 'ln-manuscript');
-setupLineNumbers('editorDesignDoc', 'ln-design');
-setupLineNumbers('editorMarp', 'ln-marp');
+function downloadFile(filename, text) {
+    const element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+    element.setAttribute('download', filename);
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+}
+
+// --- Line Number Logic ---
+function setupLineNumbers(textarea, lnContainer) {
+    if (!textarea || !lnContainer) return;
+
+    const update = () => {
+        updateLineNumbers(textarea, lnContainer);
+    };
+
+    textarea.addEventListener('input', update);
+    textarea.addEventListener('scroll', () => {
+        lnContainer.scrollTop = textarea.scrollTop;
+    });
+
+    // Initial
+    update();
+
+    // Resize observer
+    new ResizeObserver(update).observe(textarea);
+}
+
+function updateLineNumbers(textarea, lnContainer) {
+    const lines = textarea.value.split('\n').length;
+    lnContainer.innerHTML = Array(lines).fill(0).map((_, i) => `<div>${i + 1}</div>`).join('');
+    lnContainer.scrollTop = textarea.scrollTop;
+}
+
+// Run
+window.addEventListener('DOMContentLoaded', init);
