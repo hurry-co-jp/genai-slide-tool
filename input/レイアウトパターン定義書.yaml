@@ -1,0 +1,139 @@
+# ==========================================
+# レイアウトパターン定義書
+# ==========================================
+
+# --- カテゴリS: 構造・基本 (Structure & Basic) ---
+# プレゼンテーションの骨格となる基本的なスライド群
+
+- id: S01
+  name: タイトルスライド（表紙）
+  category: structure_basic
+  image_name: S01_title_cover.png
+  description: プレゼンテーションの表紙となるレイアウト。最も大きなフォントでタイトルを配置し、その下にサブタイトル、日付、所属、氏名などを配置する標準的な構成。
+  usage_hints:
+    - プレゼンテーションの開始（1枚目）に必ず使用する
+    - タイトルを最も強調し、聴衆の期待感を高めたい
+
+- id: S02
+  name: アジェンダスライド（目次）
+  category: structure_basic
+  image_name: S02_agenda_list.png
+  description: プレゼンテーション全体の流れを箇条書きまたは番号付きリストで示したレイアウト。各セクションのタイトルを一覧表示する。
+  usage_hints:
+    - 表紙の次（2枚目）に配置し、全体像を共有したい
+    - プレゼンの途中で現在地を確認するために再表示したい（その場合は現在の章をハイライトする）
+
+- id: S03
+  name: セクション区切り（中扉）
+  category: structure_basic
+  image_name: S03_section_divider.png
+  description: 大きな章の変わり目に挿入するレイアウト。背景色を反転させたり、全面に画像を使ったりして、視覚的に強い区切り感を出す。章タイトルを大きく中央に配置する。
+  usage_hints:
+    - 話題が大きく変わるタイミングで挿入する
+    - 聴衆の頭を切り替えさせ、次のテーマへの集中を促したい
+    - （E01全面ビジュアル型と似ているが、こちらはより「区切り」の機能に特化させる）
+
+# --- カテゴリA: 比較・対比 (Contrast & Comparison) ---
+- id: A01
+  name: 左右対比型（Before/After）
+  category: contrast
+  image_name: A01_contrast_before_after.png
+  description: 画面を中央で左右に分割し、対立する概念や変化の前後を比較するレイアウト。中央に変化を示す矢印を配置することが多い。
+  usage_hints:
+    - 現状（As Is）と理想（To Be）のギャップを示したい
+    - 課題とそれに対する解決策を対比させたい
+    - 導入前と導入後の変化を強調したい
+
+- id: A02
+  name: 3点比較表型（スペック）
+  category: contrast
+  image_name: A02_contrast_table_3cols.png
+  description: 縦軸に比較項目、横軸に3つの対象（自社・他社A・他社Bなど）を並べたマトリクス表形式のレイアウト。
+  usage_hints:
+    - 複数のプラン（松竹梅）を比較提示したい
+    - 競合他社に対する自社製品の優位性を機能別に示したい
+    - 複数の選択肢のメリット・デメリットを一覧化したい
+
+# --- カテゴリB: プロセス・時系列 (Process & Timeline) ---
+- id: B01
+  name: 横並びステップ型（フロー）
+  category: process
+  image_name: B01_process_steps_horizontal.png
+  description: 左から右へと順序立てて進む手順や段階を、矢印で繋がった3〜4つのボックスで表現するレイアウト。
+  usage_hints:
+    - サービスの導入から運用開始までの手順を説明したい
+    - 業務フローやデータの流れを示したい
+    - PDCAサイクルのような循環する流れを示したい
+
+- id: B02
+  name: ロードマップ型（時系列）
+  category: process
+  image_name: B02_process_roadmap.png
+  description: 横方向の時間軸に沿って、過去の経緯や将来のマイルストーンを配置した年表形式のレイアウト。
+  usage_hints:
+    - プロジェクトの中長期的な計画を示したい
+    - 会社の沿革や製品の進化の歴史を示したい
+    - 将来の目標達成に向けたスケジュール感を共有したい
+
+# --- カテゴリC: 構造・構成要素 (Structure & Components) ---
+- id: C01
+  name: 中心＋放射型（構成要素）
+  category: structure
+  image_name: C01_structure_hub_spoke.png
+  description: 中心となる概念やサービスを置き、その周囲に関連する要素や機能を配置して線で繋いだレイアウト。
+  usage_hints:
+    - 一つのコアサービスを支える複数の機能群を示したい
+    - 中心課題とそれに影響を与える関連要因を整理したい
+    - 自社サービスを中心としたエコシステム全体像を示したい
+
+- id: C02
+  name: ピラミッド階層型
+  category: structure
+  image_name: C02_structure_pyramid.png
+  description: 上下関係や包含関係を、三角形の層を積み重ねたピラミッド構造で表現するレイアウト。
+  usage_hints:
+    - 企業のビジョン・ミッション・バリューの階層を示したい
+    - 戦略・戦術・アクションプランのレベル感を整理したい
+    - 組織構造や体制図の上下関係を示したい
+
+# --- カテゴリD: 列挙・並列 (Listing & Parallel) ---
+- id: D01
+  name: 3つのポイント型（横並び）
+  category: list
+  image_name: D01_list_3points_horizontal.png
+  description: 重要な3つの要素を、それぞれ「アイコン＋見出し＋短い説明文」のセットにして、横一列に等間隔で並べる標準的なレイアウト。
+  usage_hints:
+    - 結論を支える主要な3つの根拠を提示したい
+    - サービスが持つ3大メリットをアピールしたい
+    - 重要な戦略方針を3点に絞って伝えたい
+
+- id: D02
+  name: 画像＋箇条書き型（左右配置）
+  category: list
+  image_name: D02_list_image_text.png
+  description: 画面の半分に具体的なイメージ画像やグラフを配置し、もう半分にその内容を補足する箇条書きテキストを配置するレイアウト。
+  usage_hints:
+    - 製品写真を見せながら、その特徴を箇条書きで説明したい
+    - グラフデータを示しながら、そこから読み取れる示唆を列挙したい
+    - 抽象的な概念図と、具体的な説明文をセットで提示したい
+
+# --- カテゴリE: 強調・結論 (Emphasis & Conclusion) ---
+- id: E01
+  name: 全面ビジュアル型（扉絵）
+  category: emphasis
+  image_name: E01_emphasis_visual_cover.png
+  description: 画面全体に高品質なイメージ写真を敷き、その上に短く強いキャッチコピーやタイトルを配置する、インパクト重視のレイアウト。
+  usage_hints:
+    - プレゼンテーションの表紙や、新しい章の始まり（中扉）に使いたい
+    - 最終的に伝えたい最も重要なメッセージを感情に訴えかけたい
+    - 議論の転換点で強い印象を残したい
+
+- id: E02
+  name: ビッグナンバー型（数値）
+  category: emphasis
+  image_name: E02_emphasis_big_number.png
+  description: 達成した成果や重要な目標値を、極端に巨大なフォントサイズで配置し、その周囲に補足情報を添えるレイアウト。
+  usage_hints:
+    - 売上成長率やコスト削減率などの定量的な成果を強調したい
+    - 市場シェアNo.1などの実績をアピールしたい
+    - 重要なKPI目標値を印象付けたい

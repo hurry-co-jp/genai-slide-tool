@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Slide Generator</title>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it@latest/dist/markdown-it.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@marp-team/marpit@latest/dist/marpit.umd.min.js"></script>
+    <script>
+        window.addEventListener('load', () => {
+            console.log('Window Loaded. Marpit:', window.Marpit);
+        });
+    </script>
+    <script>
+        window.onerror = function (msg, url, line, col, error) {
+            alert('Error: ' + msg + '\n' + url + ':' + line + ':' + col);
+            console.error(error);
+            return false;
+        };
+    </script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Custom scrollbar for editors */
+        textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        textarea::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .dark textarea::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+
+        textarea::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .dark textarea::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+
+        textarea::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .dark textarea::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+    </style>
+</head>
+
+<body
+    class="bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 h-screen w-screen flex flex-col font-sans overflow-hidden transition-colors duration-200">
+
+    <!-- Header -->
+    <header
+        class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 h-14 flex-none flex items-center justify-between px-6 shadow-sm z-10 w-full transition-colors duration-200">
+        <div class="flex items-center gap-3">
+            <div
+                class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white shadow-md">
+                <i class="fa-solid fa-shapes"></i>
+            </div>
+            <h1 class="font-bold text-lg bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+                Slide Generator</h1>
+        </div>
+
+        <!-- Mode Switcher -->
+        <div class="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
+            <button id="mode-draft"
+                class="px-4 py-1.5 rounded-md text-sm font-medium transition-all text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white data-[active=true]:bg-white dark:data-[active=true]:bg-slate-600 data-[active=true]:text-indigo-600 dark:data-[active=true]:text-indigo-400 data-[active=true]:shadow-sm">
+                <i class="fa-solid fa-pen-ruler mr-2"></i>Draft (構成)
+            </button>
+            <button id="mode-slide"
+                class="px-4 py-1.5 rounded-md text-sm font-medium transition-all text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white data-[active=true]:bg-white dark:data-[active=true]:bg-slate-600 data-[active=true]:text-indigo-600 dark:data-[active=true]:text-indigo-400 data-[active=true]:shadow-sm">
+                <i class="fa-solid fa-presentation-screen mr-2"></i>Slide (実装)
+            </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button id="btnToggleDark"
+                class="w-8 h-[26px] rounded-md bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-yellow-400 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex items-center justify-center text-xs">
+                <i class="fa-solid fa-moon dark:hidden"></i>
+                <i class="fa-solid fa-sun hidden dark:inline"></i>
+            </button>
+            <div class="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
+            <select id="modelSelect"
+                class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md py-1 px-2 text-xs text-slate-600 dark:text-slate-300 focus:outline-none focus:border-indigo-400 h-[26px]">
+                <option value="gemini-3-flash-preview">gemini-3-flash-preview (Default)</option>
+                <option value="gemini-3-pro-preview">gemini-3-pro-preview</option>
+                <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
+                <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+            </select>
+            <div class="relative group">
+                <input type="password" id="apiKeyInput" placeholder="Gemini API Key"
+                    class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full py-1 px-3 text-xs w-32 focus:w-64 focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500 text-slate-600 dark:text-slate-200 transition-all">
+                <div class="absolute right-3 top-1.5 text-slate-400 text-xs"><i class="fa-solid fa-key"></i></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Layout Grid (3 Columns) -->
+    <main
+        class="flex-1 flex w-full overflow-hidden bg-slate-50 dark:bg-slate-900 min-h-0 transition-colors duration-200">
+        <div id="col-1"
+            class="flex-1 flex flex-col border-r border-slate-200 dark:border-slate-800 min-w-[300px] overflow-hidden h-full">
+        </div>
+        <div id="col-2"
+            class="flex-1 flex flex-col border-r border-slate-200 dark:border-slate-800 min-w-[300px] overflow-hidden h-full">
+        </div>
+        <div id="col-3" class="flex-1 flex flex-col min-w-[300px] overflow-hidden h-full"></div>
+    </main>
+
+    <!-- Hidden Components Store (Source of Truth for DOM Elements) -->
+    <div id="component-store" class="hidden">
+
+        <!-- COMPONENT: ASSETS -->
+        <div id="comp-assets" class="flex flex-col w-full h-full bg-white dark:bg-slate-900">
+            <div
+                class="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-2 py-2 flex items-center justify-between h-12 flex-none transition-colors duration-200">
+                <div class="flex items-center gap-4">
+                    <!-- Title -->
+                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                        デザイン定義
+                    </span>
+                    <div class="w-px h-4 bg-slate-300 dark:bg-slate-600"></div>
+                    <!-- Group: Global -->
+                    <div class="flex items-center gap-1">
+                        <span
+                            class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mr-1">Global</span>
+                        <div class="flex bg-slate-200 dark:bg-slate-700 rounded p-0.5 transition-colors">
+                            <button
+                                class="asset-tab px-3 py-1 text-[10px] rounded font-medium bg-white dark:bg-slate-600 shadow-sm text-slate-700 dark:text-slate-200 active transition-all"
+                                data-mode="global-edit" title="Edit Global YAML"><i class="fa-solid fa-code"></i>
+                                Edit</button>
+                            <button
+                                class="asset-tab px-3 py-1 text-[10px] rounded font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                                data-mode="global-preview" title="View Style Guide"><i class="fa-solid fa-eye"></i>
+                                Preview</button>
+                        </div>
+                    </div>
+                    <!-- Group: Layout -->
+                    <div class="flex items-center gap-1">
+                        <span
+                            class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mr-1">Layout</span>
+                        <div class="flex bg-slate-200 dark:bg-slate-700 rounded p-0.5 transition-colors">
+                            <button
+                                class="asset-tab px-3 py-1 text-[10px] rounded font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                                data-mode="layout-edit" title="Edit Layout Patterns"><i class="fa-solid fa-code"></i>
+                                Pattern</button>
+                            <button
+                                class="asset-tab px-3 py-1 text-[10px] rounded font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                                data-mode="layout-preview" title="View Layout Gallery"><i
+                                    class="fa-solid fa-table-cells-large"></i> Sample</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Reset/Load Default Action (Small icon) -->
+                <button id="btnResetAssets"
+                    class="text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 px-2"
+                    title="Reset to Defaults"><i class="fa-solid fa-rotate-left"></i></button>
+            </div>
+
+            <div class="flex-grow flex flex-col overflow-hidden relative min-h-0 h-full">
+                <div class="flex-grow relative min-h-0 h-full flex flex-row">
+                    <div id="ln-assets"
+                        class="bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 text-right pr-2 pt-4 text-[10px] font-mono text-slate-400 dark:text-slate-500 select-none w-10 flex-none leading-relaxed overflow-hidden transition-colors">
+                    </div>
+                    <!-- Editor -->
+                    <textarea id="assetEditor"
+                        class="flex-grow p-4 pl-2 font-mono text-xs leading-relaxed focus:outline-none resize-none bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 w-full h-full transition-colors"
+                        spellcheck="false"></textarea>
+                </div>
+                <!-- Preview -->
+                <div id="assetPreview"
+                    class="absolute inset-0 w-full h-full overflow-auto bg-slate-50 dark:bg-slate-900 hidden p-4 transition-colors">
+                </div>
+            </div>
+        </div>
+
+
+        <!-- COMPONENT: MANUSCRIPT -->
+        <div id="comp-manuscript" class="flex flex-col w-full h-full bg-white dark:bg-slate-900 transition-colors">
+            <div
+                class="bg-slate-50 dark:bg-slate-800 px-2 py-2 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center h-12 flex-none transition-colors">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                        <span
+                            class="bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 rounded text-[10px]">1</span>
+                        原稿エディタ
+                    </span>
+                    <div class="flex bg-slate-200 dark:bg-slate-700 rounded p-0.5 ml-2 transition-colors">
+                        <button
+                            class="manuscript-tab px-3 py-1 text-[10px] rounded font-medium bg-white dark:bg-slate-600 shadow-sm text-slate-700 dark:text-slate-200 active transition-all"
+                            data-mode="edit"><i class="fa-solid fa-pen"></i> Edit</button>
+                        <button
+                            class="manuscript-tab px-3 py-1 text-[10px] rounded font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                            data-mode="preview"><i class="fa-solid fa-eye"></i> Preview</button>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-grow relative min-h-0 h-full flex flex-row">
+                <!-- Line Numbers -->
+                <div id="ln-manuscript"
+                    class="bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 text-right pr-2 pt-4 text-sm font-mono text-slate-400 dark:text-slate-500 select-none w-12 flex-none leading-relaxed overflow-hidden transition-colors">
+                </div>
+
+                <textarea id="editorManuscript"
+                    class="flex-grow p-4 pl-2 font-mono text-sm resize-none focus:outline-none bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 w-full h-full leading-relaxed transition-colors"
+                    placeholder="# タイトル..."></textarea>
+
+                <!-- Preview -->
+                <div id="manuscriptPreview"
+                    class="absolute inset-0 w-full h-full overflow-auto bg-white dark:bg-slate-900 dark:text-slate-300 hidden p-8 prose prose-slate dark:prose-invert prose-sm max-w-none z-10 transition-colors">
+                </div>
+            </div>
+        </div>
+
+        <!-- COMPONENT: DESIGN DOC -->
+        <div id="comp-design" class="flex flex-col w-full h-full bg-white dark:bg-slate-900 transition-colors">
+            <div
+                class="bg-slate-50 dark:bg-slate-800 px-3 py-2 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center h-12 flex-none transition-colors">
+                <div class="flex items-center gap-3 relative">
+                    <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+                        <span
+                            class="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 px-1.5 rounded text-[10px]">2</span>
+                        スライド設計書エディタ
+                    </span>
+                    <div class="flex gap-1">
+                        <button id="btnDesignSettings" title="生成設定 (ターゲット・トーン等)"
+                            class="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-300 px-2 py-1 rounded text-xs transition-colors">
+                            <i class="fa-solid fa-sliders"></i>
+                        </button>
+                        <button id="btnGenerateDesign" title="AIで設計書を生成"
+                            class="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded text-xs font-medium shadow transition-colors flex items-center gap-1">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> <span
+                                class="hidden xl:inline">AIで生成する</span>
+                        </button>
+                    </div>
+
+                    <!-- Generation Settings Popover -->
+                    <div id="popoverDesignSettings"
+                        class="hidden absolute top-full left-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-600 p-4 z-50">
+                        <div
+                            class="text-xs font-bold mb-3 text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-700 pb-2">
+                            生成設定</div>
+                        <div class="space-y-4">
+                            <!-- Depth -->
+                            <div class="space-y-1">
+                                <div class="flex justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                                    <span>詳細度</span>
+                                    <span id="val-depth">標準</span>
+                                </div>
+                                <input type="range" id="param-depth" min="1" max="5" value="3" step="1"
+                                    class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-indigo-600">
+                                <div class="flex justify-between text-[8px] text-slate-400">
+                                    <span>要約</span>
+                                    <span>網羅</span>
+                                </div>
+                            </div>
+                            <!-- Visual -->
+                            <div class="space-y-1">
+                                <div class="flex justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                                    <span>ビジュアル</span>
+                                    <span id="val-visual">標準</span>
+                                </div>
+                                <input type="range" id="param-visual" min="1" max="5" value="3" step="1"
+                                    class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-indigo-600">
+                                <div class="flex justify-between text-[8px] text-slate-400">
+                                    <span>文字</span>
+                                    <span>図解</span>
+                                </div>
+                            </div>
+                            <!-- Tone -->
+                            <div class="space-y-1">
+                                <div class="flex justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                                    <span>トーン</span>
+                                    <span id="val-tone">標準</span>
+                                </div>
+                                <input type="range" id="param-tone" min="1" max="5" value="3" step="1"
+                                    class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-indigo-600">
+                                <div class="flex justify-between text-[8px] text-slate-400">
+                                    <span>固め</span>
+                                    <span>緩め</span>
+                                </div>
+                            </div>
+                            <!-- Audience -->
+                            <div class="space-y-1">
+                                <div class="flex justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                                    <span>ターゲット</span>
+                                    <span id="val-audience">標準</span>
+                                </div>
+                                <input type="range" id="param-audience" min="1" max="5" value="3" step="1"
+                                    class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-indigo-600">
+                                <div class="flex justify-between text-[8px] text-slate-400">
+                                    <span>初学</span>
+                                    <span>専門</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Overlay to close is handled by global click listener usually, or we add one -->
+                    </div>
+                </div>
+                <div class="flex gap-1">
+                    <button id="btnCopyDesign" title="Copy"
+                        class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 p-1.5 transition-colors"><i
+                            class="fa-regular fa-copy"></i></button>
+                    <button id="btnDownloadDesign" title="Download"
+                        class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 p-1.5 transition-colors"><i
+                            class="fa-solid fa-download"></i></button>
+                </div>
+            </div>
+            <div class="flex-grow relative min-h-0 h-full flex flex-row">
+                <!-- Line Numbers -->
+                <div id="ln-design"
+                    class="bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 text-right pr-2 pt-4 text-sm font-mono text-slate-400 dark:text-slate-500 select-none w-10 flex-none leading-relaxed overflow-hidden transition-colors">
+                </div>
+
+                <textarea id="editorDesignDoc"
+                    class="flex-grow p-4 pl-2 font-mono text-sm resize-none focus:outline-none bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 w-full h-full leading-relaxed transition-colors"
+                    placeholder="AI生成または手入力..."></textarea>
+            </div>
+        </div>
+
+        <!-- COMPONENT: MARP EDITOR -->
+        <div id="comp-marp" class="flex flex-col w-full h-full bg-slate-100 dark:bg-slate-900 transition-colors">
+            <div
+                class="bg-slate-50 dark:bg-slate-800 px-3 py-2 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center h-12 flex-none transition-colors">
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                        <span
+                            class="bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 rounded text-[10px]">3</span>
+                        Raw Marp Code
+                    </span>
+                    <button id="btnRenderMarp" title="AIでMarpコードを生成"
+                        class="bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white px-2 py-1 rounded text-xs font-medium shadow transition-colors flex items-center gap-1">
+                        <i class="fa-solid fa-robot"></i> <span class="hidden xl:inline">AIで生成する</span>
+                    </button>
+                </div>
+                <div class="flex gap-1">
+                    <button id="btnCopyMarp" title="Copy"
+                        class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 p-1.5 transition-colors"><i
+                            class="fa-regular fa-copy"></i></button>
+                    <button id="btnDownloadMarp" title="Download"
+                        class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 p-1.5 transition-colors"><i
+                            class="fa-solid fa-download"></i></button>
+                </div>
+            </div>
+            <div class="flex-grow relative min-h-0 w-full h-full flex flex-row">
+                <!-- Line Numbers -->
+                <div id="ln-marp"
+                    class="bg-slate-100 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 text-right pr-2 pt-4 text-xs font-mono text-slate-400 dark:text-slate-500 select-none w-10 flex-none leading-relaxed overflow-hidden transition-colors">
+                </div>
+
+                <textarea id="editorMarp"
+                    class="flex-grow p-4 pl-2 font-mono text-xs resize-none focus:outline-none bg-slate-200 dark:bg-slate-900 text-slate-800 dark:text-slate-200 leading-relaxed z-10 w-full h-full transition-colors"
+                    placeholder="Marp Markdown Code..."></textarea>
+            </div>
+        </div>
+
+        <!-- COMPONENT: PREVIEW -->
+        <div id="comp-preview" class="flex flex-col w-full h-full bg-slate-400 dark:bg-slate-600 transition-colors">
+            <div
+                class="bg-white dark:bg-slate-800 px-3 py-2 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center h-12 flex-none transition-colors">
+                <span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                    <span
+                        class="bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 rounded text-[10px]"><i
+                            class="fa-regular fa-eye"></i></span> Marp Preview
+                </span>
+            </div>
+            <div class="flex-grow relative min-h-0 w-full h-full">
+                <div id="marpPreviewContainer"
+                    class="absolute inset-0 w-full h-full overflow-auto flex flex-col items-center py-8 gap-4 bg-slate-400 dark:bg-slate-800 transition-colors">
+                    <div class="text-slate-600 dark:text-slate-400 text-sm font-medium">Preview Mode</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="main.js" type="module"></script>
+</body>
+
+</html>
