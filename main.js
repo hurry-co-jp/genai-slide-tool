@@ -3,7 +3,7 @@ import { llmService } from './llm_service.js';
 import { marpGenerator } from './generator.js';
 import { renderPreview } from './preview_renderer.js';
 import MarkdownIt from 'https://esm.sh/markdown-it@14.1.0';
-import { Marpit } from 'https://esm.sh/@marp-team/marpit@2.0.0';
+import { Marp } from 'https://esm.sh/@marp-team/marp-core@4.0.0?bundle';
 
 // --- DOM Elements ---
 const el = (id) => document.getElementById(id);
@@ -78,7 +78,10 @@ function init() {
             }
         });
         editorDesignDoc.addEventListener('input', (e) => state.designDoc = e.target.value);
-        editorMarp.addEventListener('input', (e) => state.marpCode = e.target.value);
+        editorMarp.addEventListener('input', (e) => {
+            state.marpCode = e.target.value;
+            renderMarpPreview(state.marpCode);
+        });
 
         assetEditor.addEventListener('input', (e) => {
             if (state.assetMode.includes('global')) {
@@ -664,10 +667,10 @@ function setMode(mode) {
 
 
 function renderMarpPreview(marpMd) {
-    const marpit = new Marpit();
+    const marp = new Marp({ inlineSVG: true });
 
     // render returns { html, css }
-    const { html, css } = marpit.render(marpMd);
+    const { html, css } = marp.render(marpMd);
 
     const htmlContent = `
         <style>${css}</style>
