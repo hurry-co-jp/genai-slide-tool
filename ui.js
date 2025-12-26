@@ -3,6 +3,9 @@ import { state } from './state.js';
 import { renderPreview } from './preview_renderer.js';
 import MarkdownIt from 'https://esm.sh/markdown-it@14.1.0';
 import { Marp } from 'https://esm.sh/@marp-team/marp-core@4.0.0?bundle';
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
+mermaid.initialize({ startOnLoad: false, theme: 'default' });
 
 // --- DOM Elements ---
 // (We still access them via el() on demand or cache relevant ones if needed)
@@ -22,6 +25,25 @@ const LayoutMap = {
         el('comp-design').classList.remove('hidden');
         el('comp-marp').classList.add('hidden');
         el('comp-preview').classList.add('hidden');
+        el('comp-eval').classList.add('hidden');
+    },
+    plan: () => {
+        el('col-1').appendChild(el('comp-manuscript'));
+        el('col-2').appendChild(el('comp-eval'));
+
+        // 2-Column Layout for Plan Mode
+        el('col-1').classList.remove('hidden');
+        el('col-2').classList.remove('hidden');
+        el('col-3').classList.add('hidden'); // Hide 3rd column
+
+        el('comp-manuscript').classList.remove('hidden');
+        el('comp-eval').classList.remove('hidden');
+
+        // Hide others
+        el('comp-assets').classList.add('hidden');
+        el('comp-design').classList.add('hidden');
+        el('comp-marp').classList.add('hidden');
+        el('comp-preview').classList.add('hidden');
     },
     slide: () => {
         el('col-1').appendChild(el('comp-design'));
@@ -35,6 +57,7 @@ const LayoutMap = {
         el('comp-preview').classList.remove('hidden');
         el('comp-assets').classList.add('hidden');
         el('comp-manuscript').classList.add('hidden');
+        el('comp-eval').classList.add('hidden');
     }
 };
 
@@ -42,8 +65,11 @@ export const ui = {
     initUI() {
         // Initial setup
         this.initDarkMode();
+        this.initEvaluationSettings(); // New
+        this.initApiHelpModal(); // New
         this.updateAssetView();
         this.updateManuscriptView();
+
 
 
         // Line Numbers
@@ -61,28 +87,62 @@ export const ui = {
                 localStorage.setItem('gemini_api_key', e.target.value);
             });
         }
+
+        // API Key Toggle
+        const btnToggleApiKey = el('btnToggleApiKey');
+        if (btnToggleApiKey && apiKeyInput) {
+            btnToggleApiKey.addEventListener('click', () => {
+                const isPassword = apiKeyInput.type === 'password';
+                apiKeyInput.type = isPassword ? 'text' : 'password';
+
+                const icon = btnToggleApiKey.querySelector('i');
+                if (icon) {
+                    if (isPassword) {
+                        icon.classList.remove('fa-eye');
+                        icon.classList.add('fa-eye-slash');
+                    } else {
+                        icon.classList.remove('fa-eye-slash');
+                        icon.classList.add('fa-eye');
+                    }
+                }
+            });
+        }
     },
 
     setMode(mode) {
         state.currentMode = mode;
+
+        // Update URL
+        const url = new URL(window.location);
+        url.searchParams.set('mode', mode);
+        window.history.replaceState({}, '', url);
+
+        const btnModePlan = el('mode-plan'); // New
         const btnModeDraft = el('mode-draft');
         const btnModeSlide = el('mode-slide');
         const activeClass = ['bg-blue-600', 'text-white'];
         const inactiveClass = ['bg-white', 'text-gray-700', 'hover:bg-gray-50'];
 
-        if (mode === 'draft') {
-            btnModeDraft.classList.add(...activeClass);
-            btnModeDraft.classList.remove(...inactiveClass);
-            btnModeSlide.classList.remove(...activeClass);
-            btnModeSlide.classList.add(...inactiveClass);
-            LayoutMap.draft();
+        // Helper to set active/inactive
+        const setActive = (btn, isActive) => {
+            if (!btn) return;
+            if (isActive) {
+                btn.classList.add(...activeClass);
+                btn.classList.remove(...inactiveClass);
+            } else {
+                btn.classList.remove(...activeClass);
+                btn.classList.add(...inactiveClass);
+            }
+        };
+
+        setActive(btnModePlan, mode === 'plan');
+        setActive(btnModeDraft, mode === 'draft');
+        setActive(btnModeSlide, mode === 'slide');
+
+        if (LayoutMap[mode]) LayoutMap[mode]();
+
+        if (mode === 'draft' || mode === 'plan') {
             requestAnimationFrame(() => this.updateLineNumbers(el('editorManuscript'), el('ln-manuscript')));
-        } else {
-            btnModeSlide.classList.add(...activeClass);
-            btnModeSlide.classList.remove(...inactiveClass);
-            btnModeDraft.classList.remove(...activeClass);
-            btnModeDraft.classList.add(...inactiveClass);
-            LayoutMap.slide();
         }
     },
 
@@ -261,6 +321,53 @@ export const ui = {
         });
     },
 
+    initApiHelpModal() {
+        const modal = el('modalApiHelp');
+        const modalContent = el('modalApiHelpContent');
+        const btnOpen = el('btnApiHelp');
+        const btnClose = el('btnCloseApiHelp');
+        const btnCloseBottom = el('btnCloseApiHelpBottom');
+
+        if (!modal || !modalContent || !btnOpen) return;
+
+        const openModal = () => {
+            modal.classList.remove('hidden');
+            // Force reflow for transition
+            modal.offsetHeight;
+            modal.classList.remove('opacity-0');
+            modalContent.classList.remove('scale-95');
+            modalContent.classList.add('scale-100');
+        };
+
+        const closeModal = () => {
+            modal.classList.add('opacity-0');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        };
+
+        btnOpen.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openModal();
+        });
+
+        if (btnClose) btnClose.addEventListener('click', closeModal);
+        if (btnCloseBottom) btnCloseBottom.addEventListener('click', closeModal);
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+
+        // Close on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+                closeModal();
+            }
+        });
+    },
+
     initGenerationSettings() {
         const btnSettings = el('btnDesignSettings');
         const popover = el('popoverDesignSettings');
@@ -296,6 +403,23 @@ export const ui = {
                     else if (v >= 4) text = labels[key][2];
                     disp.textContent = text;
                 });
+            }
+        });
+    },
+
+    initEvaluationSettings() {
+        const btnSettings = el('btnEvalSettings');
+        const popover = el('popoverEvalSettings');
+        if (!btnSettings || !popover) return;
+
+        btnSettings.addEventListener('click', (e) => {
+            e.stopPropagation();
+            popover.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!popover.contains(e.target) && e.target !== btnSettings) {
+                popover.classList.add('hidden');
             }
         });
     },
@@ -338,5 +462,43 @@ SETTINGS PRIORITY:
             const isNowDark = document.documentElement.classList.toggle('dark');
             localStorage.setItem('theme', isNowDark ? 'dark' : 'light');
         });
+    },
+
+    // --- New Plan Mode Functions ---
+    async renderEvaluation(markdown) {
+        let html = "";
+        try {
+            const md = new MarkdownIt();
+            html = md.render(markdown || "_No analysis yet._");
+        } catch (e) {
+            console.error("Markdown render error:", e);
+            html = `<div class="text-red-500 font-bold mb-2">Rendering Error</div><pre class="bg-slate-100 p-2 text-xs overflow-auto">${markdown}</pre>`;
+        }
+
+        const container = el('evalContent');
+        if (container) {
+            container.innerHTML = html;
+            container.scrollTop = 0;
+        }
+    },
+
+
+
+    displayTokenUsage(usage) {
+        if (!usage) return;
+        const total = usage.totalTokenCount || 0;
+        const display = el('tokenUsageDisplay');
+        const value = el('tokenCountValue');
+
+        if (display && value) {
+            value.textContent = total.toLocaleString();
+            display.classList.remove('hidden');
+
+            // Temporary flash effect
+            display.classList.add('bg-yellow-100', 'dark:bg-yellow-900');
+            setTimeout(() => {
+                display.classList.remove('bg-yellow-100', 'dark:bg-yellow-900');
+            }, 1000);
+        }
     }
 };

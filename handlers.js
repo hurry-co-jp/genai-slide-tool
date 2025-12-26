@@ -11,9 +11,13 @@ export async function handleGenerateDesign() {
         return;
     }
 
-    const apiKey = el('apiKeyInput').value.trim();
+    const apiKeyInput = el('apiKeyInput');
+    const apiKey = apiKeyInput.value.trim();
     if (!apiKey) {
-        alert("Please enter your Gemini API Key.");
+        alert("Gemini API Keyが未入力です。\n画面右上の入力ボックスにAPI Keyを入力してください。");
+        apiKeyInput.focus();
+        apiKeyInput.classList.add('ring-2', 'ring-red-500');
+        setTimeout(() => apiKeyInput.classList.remove('ring-2', 'ring-red-500'), 2000);
         return;
     }
 
@@ -48,9 +52,13 @@ export async function handleRenderMarp() {
         return;
     }
 
-    const apiKey = el('apiKeyInput').value.trim();
+    const apiKeyInput = el('apiKeyInput');
+    const apiKey = apiKeyInput.value.trim();
     if (!apiKey) {
-        alert("Please enter your Gemini API Key.");
+        alert("Gemini API Keyが未入力です。\n画面右上の入力ボックスにAPI Keyを入力してください。");
+        apiKeyInput.focus();
+        apiKeyInput.classList.add('ring-2', 'ring-red-500');
+        setTimeout(() => apiKeyInput.classList.remove('ring-2', 'ring-red-500'), 2000);
         return;
     }
 
@@ -70,6 +78,55 @@ export async function handleRenderMarp() {
     } catch (err) {
         console.error(err);
         alert("Rendering failed: " + err.message);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+export async function handleAnalyzeManuscript() {
+    console.log("Analyze Manuscript Clicked");
+    const manuscript = el('editorManuscript').value.trim();
+    if (!manuscript) {
+        alert("Please enter a manuscript to analyze.");
+        return;
+    }
+
+    const apiKeyInput = el('apiKeyInput');
+    const apiKey = apiKeyInput.value.trim();
+    if (!apiKey) {
+        alert("Gemini API Keyが未入力です。\n画面右上の入力ボックスにAPI Keyを入力してください。");
+        apiKeyInput.focus();
+        apiKeyInput.classList.add('ring-2', 'ring-red-500');
+        setTimeout(() => apiKeyInput.classList.remove('ring-2', 'ring-red-500'), 2000);
+        return;
+    }
+
+    const modelId = el('modelSelect')?.value || 'gemini-3-flash-preview';
+
+    // Get Review Mode
+    const reviewMode = document.querySelector('input[name="review-mode"]:checked')?.value || 'B';
+
+    const btn = el('btnAnalyzeManuscript');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+    btn.disabled = true;
+
+    // Switch to Plan mode to ensure result is visible
+    ui.setMode('plan');
+
+    // Show loading state
+    ui.renderEvaluation('_Generating analysis... please wait..._');
+
+    try {
+        const report = await llmService.evaluateManuscript(apiKey, manuscript, modelId, reviewMode);
+        state.plan.evaluation = report;
+        ui.renderEvaluation(report);
+    } catch (err) {
+        console.error(err);
+        const errorMsg = `## ⚠️ Analysis Failed\n\nThe following error occurred while communicating with Gemini API:\n\n> ${err.message}\n\nPlease check your API key and Internet connection.`;
+        ui.renderEvaluation(errorMsg);
+        alert("Analysis failed: " + err.message);
     } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;

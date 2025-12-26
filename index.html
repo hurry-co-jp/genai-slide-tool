@@ -78,6 +78,10 @@
 
         <!-- Mode Switcher -->
         <div class="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
+            <button id="mode-plan"
+                class="px-4 py-1.5 rounded-md text-sm font-medium transition-all text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white data-[active=true]:bg-white dark:data-[active=true]:bg-slate-600 data-[active=true]:text-indigo-600 dark:data-[active=true]:text-indigo-400 data-[active=true]:shadow-sm">
+                <i class="fa-solid fa-compass-drafting mr-2"></i>Plan (企画)
+            </button>
             <button id="mode-draft"
                 class="px-4 py-1.5 rounded-md text-sm font-medium transition-all text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white data-[active=true]:bg-white dark:data-[active=true]:bg-slate-600 data-[active=true]:text-indigo-600 dark:data-[active=true]:text-indigo-400 data-[active=true]:shadow-sm">
                 <i class="fa-solid fa-pen-ruler mr-2"></i>Draft (構成)
@@ -106,8 +110,16 @@
             <div class="relative group">
                 <input type="password" id="apiKeyInput" placeholder="Gemini API Key"
                     class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full py-1 px-3 text-xs w-32 focus:w-64 focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500 text-slate-600 dark:text-slate-200 transition-all">
-                <div class="absolute right-3 top-1.5 text-slate-400 text-xs"><i class="fa-solid fa-key"></i></div>
+                <button id="btnToggleApiKey"
+                    class="absolute right-2 top-1 w-6 h-6 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex items-center justify-center text-xs"
+                    tabindex="-1">
+                    <i class="fa-solid fa-eye"></i>
+                </button>
             </div>
+            <button id="btnApiHelp" title="API Keyの取得方法"
+                class="w-[26px] h-[26px] rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors flex items-center justify-center text-xs">
+                <i class="fa-solid fa-circle-question"></i>
+            </button>
         </div>
     </header>
 
@@ -389,6 +401,90 @@
         </div>
 
 
+        <!-- COMPONENT: EVALUATION REPORT -->
+        <div id="comp-eval" class="flex flex-col w-full h-full bg-white dark:bg-slate-900 transition-colors">
+            <div
+                class="bg-slate-50 dark:bg-slate-800 px-3 py-2 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center h-12 flex-none transition-colors">
+                <div class="flex items-center gap-3 relative">
+                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                        <span
+                            class="bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-300 px-1.5 rounded text-[10px]">AI</span>
+                        Evaluation Report
+                    </span>
+                    <div class="flex gap-1">
+                        <button id="btnEvalSettings" title="評価設定 (レビューモード)"
+                            class="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-500 dark:text-slate-300 px-2 py-1 rounded text-xs transition-colors">
+                            <i class="fa-solid fa-sliders"></i>
+                        </button>
+                        <button id="btnAnalyzeManuscript" title="AIで文章を評価する"
+                            class="bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 rounded text-xs font-medium shadow transition-colors flex items-center gap-1">
+                            <i class="fa-solid fa-stethoscope"></i> <span class="hidden xl:inline">AIで文章を評価する</span>
+                        </button>
+                    </div>
+
+                    <!-- Evaluation Settings Popover -->
+                    <div id="popoverEvalSettings"
+                        class="hidden absolute top-full left-10 mt-2 w-72 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-600 p-4 z-50">
+                        <div
+                            class="text-xs font-bold mb-3 text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-700 pb-2">
+                            評価設定</div>
+                        <div class="space-y-4">
+                            <!-- Review Mode -->
+                            <div class="space-y-2">
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400 font-bold">レビューモード</div>
+                                <div class="space-y-2">
+                                    <label class="flex items-start gap-2 cursor-pointer group">
+                                        <input type="radio" name="review-mode" value="A" class="mt-0.5 accent-rose-600">
+                                        <div>
+                                            <div
+                                                class="text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-rose-600 transition-colors">
+                                                A (Coaching)</div>
+                                            <div class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                                                書き手を育てるモード。良い点は褒め、改善点を優しく提案。</div>
+                                        </div>
+                                    </label>
+                                    <label class="flex items-start gap-2 cursor-pointer group">
+                                        <input type="radio" name="review-mode" value="B" checked
+                                            class="mt-0.5 accent-rose-600">
+                                        <div>
+                                            <div
+                                                class="text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-rose-600 transition-colors">
+                                                B (Standard)</div>
+                                            <div class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                                                品質重視。感情を排して事務的に誤字・論理を指摘。</div>
+                                        </div>
+                                    </label>
+                                    <label class="flex items-start gap-2 cursor-pointer group">
+                                        <input type="radio" name="review-mode" value="C" class="mt-0.5 accent-rose-600">
+                                        <div>
+                                            <div
+                                                class="text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-rose-600 transition-colors">
+                                                C (Hardcore)</div>
+                                            <div class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                                                堅牢性重視。意地悪なシニアエンジニアとして容赦なく攻撃。</div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-grow relative min-h-0 w-full h-full bg-white dark:bg-slate-900 overflow-hidden">
+                <div id="evalContent"
+                    class="absolute inset-0 w-full h-full overflow-auto p-6 prose prose-slate dark:prose-invert prose-sm max-w-none transition-all">
+                    <div class="text-slate-400 dark:text-slate-500 text-center mt-10 italic">
+                        Click "AIで文章を評価する" to get feedback.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+
+
+
 
     </div>
 
@@ -408,6 +504,69 @@
             <div id="modalInfo" class="mt-4 p-4">
                 <h3 class="text-xl font-bold text-slate-800 dark:text-white" id="modalTitle">Title</h3>
                 <p class="text-sm text-slate-600 dark:text-slate-300 mt-2" id="modalDesc">Description</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: API Help -->
+    <div id="modalApiHelp"
+        class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-lg p-6 relative transform scale-95 transition-transform duration-200"
+            id="modalApiHelpContent">
+            <button id="btnCloseApiHelp"
+                class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                <i class="fa-solid fa-times text-lg"></i>
+            </button>
+
+            <div class="text-center mb-6">
+                <div
+                    class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400 mx-auto mb-3 text-xl">
+                    <i class="fa-brands fa-google"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800 dark:text-white">Gemini API Keyの取得方法</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Google AI Studioから無料で取得できます</p>
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex gap-4 items-start">
+                    <div
+                        class="flex-none w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 flex items-center justify-center text-xs font-bold">
+                        1</div>
+                    <div class="flex-grow">
+                        <p class="text-sm text-slate-700 dark:text-slate-300 font-medium">Google AI Studioにアクセス</p>
+                        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer"
+                            class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline mt-0.5 inline-block">
+                            https://aistudio.google.com/app/apikey <i class="fa-solid fa-external-link-alt ml-1"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 items-start">
+                    <div
+                        class="flex-none w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 flex items-center justify-center text-xs font-bold">
+                        2</div>
+                    <div class="flex-grow">
+                        <p class="text-sm text-slate-700 dark:text-slate-300 font-medium">「APIキーを作成」をクリック</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-500 mt-0.5">Googleアカウントでのログインが必要です。</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 items-start">
+                    <div
+                        class="flex-none w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 flex items-center justify-center text-xs font-bold">
+                        3</div>
+                    <div class="flex-grow">
+                        <p class="text-sm text-slate-700 dark:text-slate-300 font-medium">作成したキーをコピー</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-500 mt-0.5">右上の入力欄に貼り付けてください。</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 pt-4 border-t border-slate-100 dark:border-slate-700 text-center">
+                <button id="btnCloseApiHelpBottom"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-full text-sm font-medium transition-colors shadow">
+                    わかった
+                </button>
             </div>
         </div>
     </div>

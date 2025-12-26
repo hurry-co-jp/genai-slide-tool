@@ -2,7 +2,7 @@ import { DEFAULT_GLOBAL_DESIGN, DEFAULT_LAYOUT_PATTERNS } from './defaults.js';
 import { state } from './state.js';
 import { ui } from './ui.js';
 import { el, copyToClipboard, downloadFile } from './utils.js';
-import { handleGenerateDesign, handleRenderMarp } from './handlers.js';
+import { handleGenerateDesign, handleRenderMarp, handleAnalyzeManuscript } from './handlers.js';
 
 function init() {
     try {
@@ -12,6 +12,22 @@ function init() {
         ui.initUI();
         ui.initLayoutPreviewModal();
         ui.initGenerationSettings();
+
+        // 1. Parse URL Parameter
+        const params = new URLSearchParams(window.location.search);
+        const urlMode = params.get('mode');
+        const validModes = ['plan', 'draft', 'slide'];
+
+        let initialMode = 'draft'; // Default
+        if (validModes.includes(urlMode)) {
+            initialMode = urlMode;
+        }
+
+
+        // 2. Set Initial Mode
+        // Note: state.currentMode is 'draft' by default in state.js, 
+        // but ui.setMode will update UI visibility and buttons.
+        ui.setMode(initialMode);
 
         // Load Defaults
         el('editorManuscript').value = state.manuscript;
@@ -48,6 +64,8 @@ function init() {
 
         el('btnGenerateDesign').addEventListener('click', handleGenerateDesign);
         el('btnRenderMarp').addEventListener('click', handleRenderMarp);
+        el('btnAnalyzeManuscript').addEventListener('click', handleAnalyzeManuscript); // New
+
 
         // Copy/Download
         el('btnCopyDesign').addEventListener('click', () => copyToClipboard(state.designDoc));
@@ -73,6 +91,7 @@ function init() {
         }
 
         // Mode Switching
+        el('mode-plan').addEventListener('click', () => ui.setMode('plan')); // New
         el('mode-draft').addEventListener('click', () => ui.setMode('draft'));
         el('mode-slide').addEventListener('click', () => ui.setMode('slide'));
 
@@ -94,8 +113,10 @@ function init() {
             });
         });
 
+
+
         // Initial State
-        ui.setMode('draft');
+
 
     } catch (e) {
         console.error("Critical Init Error:", e);
